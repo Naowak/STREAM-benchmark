@@ -57,7 +57,7 @@ def generate_copy_task(sequence_length, delay_length, n_symbols=8):
 
     return input_onehot, target_onehot
 
-def generate_selective_copy(sequence_length, n_markers=2, n_symbols=8):
+def generate_selective_copy_task(sequence_length, n_markers=2, n_symbols=8):
     """
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
     et reproduire uniquement les éléments marqués dans la séquence, lorsqu'un signal l'averti.
@@ -94,6 +94,10 @@ def generate_adding_problem(sequence_length, max_number=9):
     - Une séquence de nombres aléatoires
     - Une séquence de marqueurs (deux 1, le reste 0)
     Le modèle doit additionner les nombres aux positions marquées
+
+    Return:
+    - input (sequence_length + endflag + zero (1), max_number + marker + endflag)
+    - target (zero_sequence + endflag + target, max_number * 2 + 1)
     """
     # Génère une séquence de nombres aléatoires
     sequence = np.random.randint(0, max_number+1, sequence_length)
@@ -118,17 +122,42 @@ def generate_adding_problem(sequence_length, max_number=9):
     return input, target
 
 
-
-
-
-
-def generate_sorting_task(sequence_length):
+def generate_sorting_problem(sequence_length, n_symbols=8):
     """
-    Test la capacité à ordonner des informations
+    Génère une séquence de symbols désordonné associé à un ordre. 
+    Le modèle doit réordonner la séquence en fonction de l'ordre.
+
+    Return:
+    - input (sequence + 1 + zero_seq, n_symbols + 1 + order (sequence_length))
+    - target (zero_seq + 1 + sequence, n_symbols)
     """
-    sequence = np.random.uniform(0, 1, size=sequence_length)
-    target = np.sort(sequence)
-    return sequence, target
+
+    # Create a sequence of symbols & a random order
+    sequence = np.random.randint(0, n_symbols, sequence_length)
+    order = np.random.permutation(sequence_length)
+
+    # One-hot encode the sequence and order
+    sequence_onehot = np.eye(n_symbols)[sequence]
+    order_onehot = np.eye(sequence_length + 1)[order]
+    sequence_order = np.concatenate([sequence_onehot, order_onehot], axis=1)
+
+    # Create other input parts   
+    marker = np.zeros((1, n_symbols + sequence_length + 1))
+    marker[0, n_symbols+sequence_length] = 1
+    zero_input_pad = np.zeros((sequence_length, n_symbols + sequence_length + 1))
+
+    # Create the input & target
+    input = np.concatenate([sequence_order, marker, zero_input_pad], axis=0)
+    target = np.zeros((sequence_length+1+sequence_length, n_symbols))
+    target[sequence_length + 1 + order] = sequence_onehot
+
+    return input, target
+
+
+
+
+
+
 
 def generate_bracket_matching(max_depth=5, sequence_length=100):
     """
