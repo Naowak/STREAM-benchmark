@@ -1,7 +1,10 @@
 import numpy as np
 
+# ------------ TEST DE MEMOIRE SIMPLE ------------ #
+
 def generate_discrete_postcasting(sequence_length, delay_length, n_symbols=8):
     """
+    [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
     (one-hot) après un délai.
 
@@ -21,6 +24,7 @@ def generate_discrete_postcasting(sequence_length, delay_length, n_symbols=8):
 
 def generate_continue_postcasting(sequence_length, delay_length):
     """
+    [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
     (continuous) après un délai.
 
@@ -38,6 +42,7 @@ def generate_continue_postcasting(sequence_length, delay_length):
 
 def generate_copy_task(sequence_length, delay_length, n_symbols=8):
     """
+    [Multi sequence]
     Génère une tâche de copie : le modèle doit lire l'ensemble d'une séquence, 
     la mémoriser et la reproduire après un délai, lorsqu'un signal l'averti.
 
@@ -59,6 +64,7 @@ def generate_copy_task(sequence_length, delay_length, n_symbols=8):
 
 def generate_selective_copy_task(sequence_length, n_markers=2, n_symbols=8):
     """
+    [Multi sequence]
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
     et reproduire uniquement les éléments marqués dans la séquence, lorsqu'un signal l'averti.
 
@@ -88,8 +94,15 @@ def generate_selective_copy_task(sequence_length, n_markers=2, n_symbols=8):
 
     return input, target
 
+
+
+
+
+# ------------ TEST DE MANIPULATION DE L'INFORMATION RETENUE ------------ #
+
 def generate_adding_problem(sequence_length, max_number=9):
     """
+    [Multi sequence]
     Version classique : deux séquences parallèles
     - Une séquence de nombres aléatoires
     - Une séquence de marqueurs (deux 1, le reste 0)
@@ -121,9 +134,9 @@ def generate_adding_problem(sequence_length, max_number=9):
 
     return input, target
 
-
 def generate_sorting_problem(sequence_length, n_symbols=8):
     """
+    [Multi sequence]
     Génère une séquence de symbols désordonné associé à un ordre. 
     Le modèle doit réordonner la séquence en fonction de l'ordre.
 
@@ -157,10 +170,55 @@ def generate_sorting_problem(sequence_length, n_symbols=8):
 
 
 
+# ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
-
-def generate_bracket_matching(max_depth=5, sequence_length=100):
+def generate_discrete_pattern_completion(n_symbols=8, base_length=5, n_repetitions=4, proba_mask=0.2):
     """
+    [Unique sequence]
+    Le modèle doit identifier et compléter des motifs répétitifs
+
+    Return:
+    - input (sequence_length, n_symbols + 1)
+    - target (sequence_length, n_symbols)
+    """
+    base_pattern = np.random.randint(1, n_symbols+1, size=base_length)
+    sequence = np.tile(base_pattern, n_repetitions)
+
+    # Masquer certaines parties pour que le modèle les prédise
+    mask = np.random.random(sequence.shape) < proba_mask
+    masked_sequence = sequence.copy()
+    masked_sequence[mask] = 0
+
+    input = np.eye(n_symbols+1)[masked_sequence]
+    target = np.eye(n_symbols+1)[sequence][:, 1:]
+
+    return input, target
+
+def generate_continuous_pattern_completion(base_length=5, n_repetitions=4, proba_mask=0.2):
+    """
+    [Unique sequence]
+    Le modèle doit identifier et compléter des motifs répétitifs
+
+    Return:
+    - input (sequence_length, 1)
+    - target (sequence_length, 1)
+    """
+    base_pattern = np.random.uniform(0, 1, size=base_length)
+    sequence = np.tile(base_pattern, n_repetitions)
+
+    # Masquer certaines parties pour que le modèle les prédise
+    mask = np.random.random(sequence.shape) < proba_mask
+    masked_sequence = sequence.copy()
+    masked_sequence[mask] = -1
+
+    input = masked_sequence.reshape(-1, 1)
+    target = sequence.reshape(-1, 1)
+
+    return input, target
+
+def generate_bracket_matching(sequence_length=100, max_depth=5):
+    """
+    [Multi sequence]
     Génère une séquence de parenthèses que le modèle doit valider
     Test la capacité à maintenir un contexte hiérarchique
     """
@@ -170,7 +228,7 @@ def generate_bracket_matching(max_depth=5, sequence_length=100):
         remaining = length
         
         while remaining > 0:
-            if len(stack) == 0 or (remaining > len(stack) and len(stack) < max_depth and random.random() > 0.5):
+            if len(stack) == 0 or (remaining > len(stack) and len(stack) < max_depth and np.random.random() > 0.5):
                 sequence.append('(')
                 stack.append('(')
             else:
@@ -179,23 +237,49 @@ def generate_bracket_matching(max_depth=5, sequence_length=100):
             remaining -= 1
         
         return sequence
-    
-    sequence = generate_valid_sequence(sequence_length, max_depth)
-    return sequence, 1  # 1 indique une séquence valide
 
-def generate_pattern_completion(base_length=5, n_repetitions=4):
-    """
-    Le modèle doit identifier et compléter des motifs répétitifs
-    """
-    base_pattern = np.random.randint(0, 8, size=base_length)
-    sequence = np.tile(base_pattern, n_repetitions)
-    
-    # Masquer certaines parties pour que le modèle les prédise
-    mask = np.random.random(sequence.shape) > 0.3
-    masked_sequence = sequence.copy()
-    masked_sequence[~mask] = -1
-    
-    return masked_sequence, sequence
+    def check_validity(sequence):
+        stack = []
+        for bracket in sequence:
+            if bracket == '(':
+                stack.append(bracket)
+            elif len(stack) == 0:
+                return 0
+            else:
+                stack.pop()
+        return int(len(stack) == 0)
+
+    def mutate_sequence(sequence, proba=0.35):
+        nb_mutated = int(len(sequence) * proba)
+        index = np.random.choice(len(sequence), nb_mutated, replace=False)
+        mutation = ['(' if np.random.random() > 0.5 else ')' for _ in range(nb_mutated)]
+        for i, bracket in zip(index, mutation):
+            sequence[i] = bracket
+        return sequence
+
+    # Generate a sequence
+    sequence = generate_valid_sequence(sequence_length, max_depth)
+    sequence = sequence if np.random.random() < 0.5 else mutate_sequence(sequence)
+    validity = check_validity(sequence)
+
+    # One-hot encode the sequence
+    sequence_onehot = np.zeros((sequence_length+2, 3))
+    for i, bracket in enumerate(sequence):
+        sequence_onehot[i, 0 if bracket == '(' else 1] = 1
+    sequence_onehot[-2, 2] = 1 # marker
+
+    # Create the input & target
+    input = sequence_onehot
+    target = np.zeros((sequence_length+2, 1))
+    target[-1, 0] = int(validity)
+
+    return input, target
+
+
+
+
+
+# ------------ TEST DE TRAITEMENT DU SIGNAL ------------ #
 
 def generate_frequency_modulation():
     """
