@@ -219,8 +219,12 @@ def generate_continuous_pattern_completion(base_length=5, n_repetitions=4, proba
 def generate_bracket_matching(sequence_length=100, max_depth=5):
     """
     [Multi sequence]
-    Génère une séquence de parenthèses que le modèle doit valider
-    Test la capacité à maintenir un contexte hiérarchique
+    Génère une séquence de parenthèses que le modèle doit valider.
+    Test la capacité à maintenir un contexte hiérarchique.
+
+    Return:
+    - input (sequence_length + 2, 3)
+    - target (sequence_length + 2, 1)
     """
     def generate_valid_sequence(length, max_depth):
         sequence = []
@@ -278,26 +282,41 @@ def generate_bracket_matching(sequence_length=100, max_depth=5):
 
 
 
-
 # ------------ TEST DE TRAITEMENT DU SIGNAL ------------ #
 
-def generate_frequency_modulation():
+def generate_sin_forecasting(sequence_length=1000, forecast_length=1):
     """
-    Génère un signal modulé en fréquence
-    Test la capacité à traiter des signaux complexes
+    [Unique sequence]
+    Génère un signal sinusoïdal modulé en fréquence.
+    Le modèle doit prédire la fréquence du signal à l'instant suivant.
+
+    Return:
+    - input (sequence_length, 1)
+    - target (sequence_length, 1)
     """
-    t = np.linspace(0, 10, 1000)
+    length = sequence_length + forecast_length
+    max_value = length / 100
+    t = np.linspace(0, max_value, length)
     carrier_freq = 10
     modulator_freq = 0.5
-    
+
     modulator = np.sin(2 * np.pi * modulator_freq * t)
     carrier = np.sin(2 * np.pi * carrier_freq * t + modulator)
-    
-    return {'signal': carrier[:-1]}, carrier[1:]
 
-def generate_chaotic_series(length=1000):
+    input = carrier[:-forecast_length].reshape(-1, 1)
+    target = carrier[forecast_length:].reshape(-1, 1)
+
+    return input, target
+
+def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1):
     """
-    Génère une série temporelle chaotique (système de Lorenz)
+    [Unique sequence]
+    Génère une série temporelle chaotique (système de Lorenz).
+    Le modèle doit prédire l'état du système à l'instant suivant.
+
+    Return:
+    - input (sequence_length, 3)
+    - target (sequence_length, 3)
     """
     def lorenz(x, y, z, s=10, r=28, b=2.667):
         dx = s * (y - x)
@@ -306,7 +325,7 @@ def generate_chaotic_series(length=1000):
         return dx, dy, dz
     
     dt = 0.01
-    stepCnt = length
+    stepCnt = sequence_length + forecast_length
     
     xs = np.zeros(stepCnt)
     ys = np.zeros(stepCnt)
@@ -319,5 +338,9 @@ def generate_chaotic_series(length=1000):
         xs[i + 1] = xs[i] + (dx * dt)
         ys[i + 1] = ys[i] + (dy * dt)
         zs[i + 1] = zs[i] + (dz * dt)
+
+    input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length]))
+    target = np.column_stack((xs[forecast_length:], ys[forecast_length:], zs[forecast_length:]))
+
+    return input, target
     
-    return {'x': xs[:-1], 'y': ys[:-1], 'z': zs[:-1]}, np.column_stack((xs[1:], ys[1:], zs[1:]))
