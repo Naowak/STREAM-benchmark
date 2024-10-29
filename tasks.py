@@ -2,18 +2,23 @@ import numpy as np
 
 # ------------ TEST DE MEMOIRE SIMPLE ------------ #
 
-def generate_discrete_postcasting(sequence_length, delay_length, n_symbols=8):
+def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8):
     """
     [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
     (one-hot) après un délai.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - delay (int): délai avant de reproduire la séquence
+    - n_symbols (int): nombre de symboles possibles
+
     Return:
-    - input (sequence_length + delay_length, n_symbols + 1)
-    - target (delay_length + sequence_length, n_symbols + 1)
+    - input (sequence + delay, n_symbols + 1)
+    - target (delay + sequence, n_symbols + 1)
     """
     input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)
-    delay = np.zeros(delay_length)
+    delay = np.zeros(delay)
     
     input_data = np.concatenate([input_sequence, delay]).astype(int)
     target_data = np.concatenate([delay, input_sequence]).astype(int)
@@ -22,37 +27,46 @@ def generate_discrete_postcasting(sequence_length, delay_length, n_symbols=8):
     
     return input_onehot, target_onehot
 
-def generate_continue_postcasting(sequence_length, delay_length):
+def generate_continue_postcasting(sequence_length=1000, delay=10):
     """
     [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
     (continuous) après un délai.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - delay (int): délai avant de reproduire la séquence
+
     Return:
-    - input (sequence_length + delay_length, 1)
-    - target (delay_length + sequence_length, 1)
+    - input (sequence + delay, 1)
+    - target (delay + sequence, 1)
     """
     input_sequence = np.random.uniform(-0.8, 0.8, size=sequence_length)
-    delay = np.zeros(delay_length)
+    delay = np.zeros(delay)
     
     input_data = np.concatenate([input_sequence, delay]).reshape(-1, 1)
     target_data = np.concatenate([delay, input_sequence]).reshape(-1, 1)
     
     return input_data, target_data
 
-def generate_copy_task(sequence_length, delay_length, n_symbols=8):
+def generate_copy_task(sequence_length=1000, delay=10, n_symbols=8):
     """
     [Multi sequence]
     Génère une tâche de copie : le modèle doit lire l'ensemble d'une séquence, 
     la mémoriser et la reproduire après un délai, lorsqu'un signal l'averti.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - delay (int): délai avant de reproduire la séquence
+    - n_symbols (int): nombre de symboles possibles
+
     Return:
-    - input (sequence_length + delay_length + 1 (marker) + zero_sequence, n_symbols + 1 (marker))
-    - target (zero_sequence + delay_length + 1 (marker) + sequence, n_symbols + 1 (marker))
+    - input (sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (marker))
+    - target (zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (marker))
     """
     input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)  # 8 symboles possibles
     marker = n_symbols + 1  # marqueur de début de reproduction
-    delay = np.zeros(delay_length)
+    delay = np.zeros(delay)
     zero_sequence = np.zeros(sequence_length)
     
     input_data = np.concatenate([input_sequence, delay, [marker], zero_sequence]).astype(int)
@@ -62,15 +76,20 @@ def generate_copy_task(sequence_length, delay_length, n_symbols=8):
 
     return input_onehot, target_onehot
 
-def generate_selective_copy_task(sequence_length, n_markers=2, n_symbols=8):
+def generate_selective_copy_task(sequence_length=1000, n_markers=2, n_symbols=8):
     """
     [Multi sequence]
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
     et reproduire uniquement les éléments marqués dans la séquence, lorsqu'un signal l'averti.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - n_markers (int): nombre d'éléments à mémoriser
+    - n_symbols (int): nombre de symboles possibles
+
     Return: 
-    - input (sequence_length + 1 (endflag) + n_markers (zero), n_symbols + 2 (pin and endflag))
-    - target (sequence_length (zero) + 1 (endflag) + n_markers, n_symbols)
+    - input (sequence + 1 (endflag) + n_markers (zero), n_symbols + 2 (pin and endflag))
+    - target (zero_sequence + 1 (endflag) + n_markers, n_symbols)
     """
     # generate random onehot sequence
     sequence = np.random.randint(0, n_symbols, size=sequence_length)
@@ -100,7 +119,7 @@ def generate_selective_copy_task(sequence_length, n_markers=2, n_symbols=8):
 
 # ------------ TEST DE MANIPULATION DE L'INFORMATION RETENUE ------------ #
 
-def generate_adding_problem(sequence_length, max_number=9):
+def generate_adding_problem(sequence_length=1000, max_number=9):
     """
     [Multi sequence]
     Version classique : deux séquences parallèles
@@ -108,8 +127,12 @@ def generate_adding_problem(sequence_length, max_number=9):
     - Une séquence de marqueurs (deux 1, le reste 0)
     Le modèle doit additionner les nombres aux positions marquées
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - max_number (int): nombre maximal possible
+
     Return:
-    - input (sequence_length + endflag + zero (1), max_number + marker + endflag)
+    - input (sequence + endflag + zero (1), max_number + marker + endflag)
     - target (zero_sequence + endflag + target, max_number * 2 + 1)
     """
     # Génère une séquence de nombres aléatoires
@@ -134,11 +157,15 @@ def generate_adding_problem(sequence_length, max_number=9):
 
     return input, target
 
-def generate_sorting_problem(sequence_length, n_symbols=8):
+def generate_sorting_problem(sequence_length=1000, n_symbols=8):
     """
     [Multi sequence]
     Génère une séquence de symbols désordonné associé à un ordre. 
     Le modèle doit réordonner la séquence en fonction de l'ordre.
+
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - n_symbols (int): nombre de symboles possibles
 
     Return:
     - input (sequence + 1 + zero_seq, n_symbols + 1 + order (sequence_length))
@@ -175,11 +202,17 @@ def generate_sorting_problem(sequence_length, n_symbols=8):
 def generate_discrete_pattern_completion(n_symbols=8, base_length=5, n_repetitions=4, proba_mask=0.2):
     """
     [Unique sequence]
-    Le modèle doit identifier et compléter des motifs répétitifs
+    Le modèle doit identifier et compléter des motifs répétitifs.
+
+    Args:
+    - n_symbols (int): nombre de symboles possibles
+    - base_length (int): longueur du motif
+    - n_repetitions (int): nombre de répétitions du motif
+    - proba_mask (float): probabilité de masquer un symbole
 
     Return:
-    - input (sequence_length, n_symbols + 1)
-    - target (sequence_length, n_symbols)
+    - input (sequence, n_symbols + 1)
+    - target (sequence, n_symbols)
     """
     base_pattern = np.random.randint(1, n_symbols+1, size=base_length)
     sequence = np.tile(base_pattern, n_repetitions)
@@ -197,11 +230,16 @@ def generate_discrete_pattern_completion(n_symbols=8, base_length=5, n_repetitio
 def generate_continuous_pattern_completion(base_length=5, n_repetitions=4, proba_mask=0.2):
     """
     [Unique sequence]
-    Le modèle doit identifier et compléter des motifs répétitifs
+    Le modèle doit identifier et compléter des motifs répétitifs.
+
+    Args:
+    - base_length (int): longueur du motif
+    - n_repetitions (int): nombre de répétitions du motif
+    - proba_mask (float): probabilité de masquer un symbole
 
     Return:
-    - input (sequence_length, 1)
-    - target (sequence_length, 1)
+    - input (sequence, 1)
+    - target (sequence, 1)
     """
     base_pattern = np.random.uniform(0, 1, size=base_length)
     sequence = np.tile(base_pattern, n_repetitions)
@@ -222,9 +260,13 @@ def generate_bracket_matching(sequence_length=100, max_depth=5):
     Génère une séquence de parenthèses que le modèle doit valider.
     Test la capacité à maintenir un contexte hiérarchique.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - max_depth (int): profondeur maximale des parenthèses
+
     Return:
-    - input (sequence_length + 2, 3)
-    - target (sequence_length + 2, 1)
+    - input (sequence + 2, 3)
+    - target (sequence + 2, 1)
     """
     def generate_valid_sequence(length, max_depth):
         sequence = []
@@ -290,9 +332,13 @@ def generate_sin_forecasting(sequence_length=1000, forecast_length=1):
     Génère un signal sinusoïdal modulé en fréquence.
     Le modèle doit prédire la fréquence du signal à l'instant suivant.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - forecast_length (int): longueur de la prédiction
+
     Return:
-    - input (sequence_length, 1)
-    - target (sequence_length, 1)
+    - input (sequence, 1)
+    - target (sequence, 1)
     """
     length = sequence_length + forecast_length
     max_value = length / 100
@@ -314,9 +360,13 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1):
     Génère une série temporelle chaotique (système de Lorenz).
     Le modèle doit prédire l'état du système à l'instant suivant.
 
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - forecast_length (int): longueur de la prédiction
+
     Return:
-    - input (sequence_length, 3)
-    - target (sequence_length, 3)
+    - input (sequence, 3)
+    - target (sequence, 3)
     """
     def lorenz(x, y, z, s=10, r=28, b=2.667):
         dx = s * (y - x)
