@@ -49,69 +49,79 @@ def generate_continue_postcasting(sequence_length=1000, delay=10):
     
     return input_data, target_data
 
-def generate_copy_task(sequence_length=1000, delay=10, n_symbols=8):
+def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=8):
     """
     [Multi sequence]
     Génère une tâche de copie : le modèle doit lire l'ensemble d'une séquence, 
     la mémoriser et la reproduire après un délai, lorsqu'un signal l'averti.
 
     Args:
+    - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - delay (int): délai avant de reproduire la séquence
     - n_symbols (int): nombre de symboles possibles
 
     Return:
-    - input (sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (marker))
-    - target (zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (marker))
+    - input (n_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (marker))
+    - target (n_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (marker))
     """
-    input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)  # 8 symboles possibles
-    marker = n_symbols + 1  # marqueur de début de reproduction
-    delay = np.zeros(delay)
-    zero_sequence = np.zeros(sequence_length)
-    
-    input_data = np.concatenate([input_sequence, delay, [marker], zero_sequence]).astype(int)
-    target_data = np.concatenate([zero_sequence, delay, [0], input_sequence]).astype(int)
-    input_onehot = np.eye(n_symbols+2)[input_data]
-    target_onehot = np.eye(n_symbols+2)[target_data]
+    def generate_one_sample():
+        input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)  # 8 symboles possibles
+        marker = n_symbols + 1  # marqueur de début de reproduction
+        delay = np.zeros(delay)
+        zero_sequence = np.zeros(sequence_length)
+        
+        input_data = np.concatenate([input_sequence, delay, [marker], zero_sequence]).astype(int)
+        target_data = np.concatenate([zero_sequence, delay, [0], input_sequence]).astype(int)
+        input_onehot = np.eye(n_symbols+2)[input_data]
+        target_onehot = np.eye(n_symbols+2)[target_data]
 
-    return input_onehot, target_onehot
+        return input_onehot, target_onehot
 
-def generate_selective_copy_task(sequence_length=1000, n_markers=2, n_symbols=8):
+    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
+    return np.array(input), np.array(target)
+
+def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=2, n_symbols=8):
     """
     [Multi sequence]
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
     et reproduire uniquement les éléments marqués dans la séquence, lorsqu'un signal l'averti.
 
     Args:
+    - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - n_markers (int): nombre d'éléments à mémoriser
     - n_symbols (int): nombre de symboles possibles
 
     Return: 
-    - input (sequence + 1 (endflag) + n_markers (zero), n_symbols + 2 (pin and endflag))
-    - target (zero_sequence + 1 (endflag) + n_markers, n_symbols)
+    - input (n_samples, sequence + 1 (endflag) + n_markers (zero), n_symbols + 2 (pin and endflag))
+    - target (n_samples, zero_sequence + 1 (endflag) + n_markers, n_symbols)
     """
-    # generate random onehot sequence
-    sequence = np.random.randint(0, n_symbols, size=sequence_length)
-    sequence_onehot = np.eye(n_symbols)[sequence]
-    sequence_padded = np.concatenate([sequence_onehot, np.zeros((1+n_markers, n_symbols))], axis=0)
-    sequence_padded
+    def generate_one_sample():
+        # generate random onehot sequence
+        sequence = np.random.randint(0, n_symbols, size=sequence_length)
+        sequence_onehot = np.eye(n_symbols)[sequence]
+        sequence_padded = np.concatenate([sequence_onehot, np.zeros((1+n_markers, n_symbols))], axis=0)
+        sequence_padded
 
-    # selection column
-    selected_indices = np.random.choice(sequence_length, n_markers, replace=False)
-    selection = np.zeros(sequence_length + n_markers + 1).reshape(-1, 1)
-    selection[selected_indices, 0] = 1
+        # selection column
+        selected_indices = np.random.choice(sequence_length, n_markers, replace=False)
+        selection = np.zeros(sequence_length + n_markers + 1).reshape(-1, 1)
+        selection[selected_indices, 0] = 1
 
-    # end flag column
-    endflag = np.zeros(sequence_length + n_markers + 1).reshape(-1, 1)
-    endflag[sequence_length, 0] = 1
-    input = np.concatenate([sequence_padded, selection, endflag], axis=1)
+        # end flag column
+        endflag = np.zeros(sequence_length + n_markers + 1).reshape(-1, 1)
+        endflag[sequence_length, 0] = 1
+        input = np.concatenate([sequence_padded, selection, endflag], axis=1)
 
-    # Compute target
-    target = np.zeros((sequence_length + n_markers + 1, n_symbols))
-    target[-n_markers:, :] = sequence_onehot[selected_indices, :]
+        # Compute target
+        target = np.zeros((sequence_length + n_markers + 1, n_symbols))
+        target[-n_markers:, :] = sequence_onehot[selected_indices, :]
 
-    return input, target
+        return input, target
+    
+    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
+    return np.array(input), np.array(target)
 
 
 
@@ -119,7 +129,7 @@ def generate_selective_copy_task(sequence_length=1000, n_markers=2, n_symbols=8)
 
 # ------------ TEST DE MANIPULATION DE L'INFORMATION RETENUE ------------ #
 
-def generate_adding_problem(sequence_length=1000, max_number=9):
+def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9):
     """
     [Multi sequence]
     Version classique : deux séquences parallèles
@@ -128,70 +138,79 @@ def generate_adding_problem(sequence_length=1000, max_number=9):
     Le modèle doit additionner les nombres aux positions marquées
 
     Args:
+    - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - max_number (int): nombre maximal possible
 
     Return:
-    - input (sequence + endflag + zero (1), max_number + marker + endflag)
-    - target (zero_sequence + endflag + target, max_number * 2 + 1)
+    - input (n_samples, sequence + endflag + zero (1), max_number + marker + endflag)
+    - target (n_samples, zero_sequence + endflag + target, max_number * 2 + 1)
     """
-    # Génère une séquence de nombres aléatoires
-    sequence = np.random.randint(0, max_number+1, sequence_length)
-    sequence_onehot = np.eye(max_number+1)[sequence]
-    sequence_padded = np.concatenate([sequence_onehot, np.zeros((2, max_number+1))], axis=0)
+    def generate_one_sample():
+        # Génère une séquence de nombres aléatoires
+        sequence = np.random.randint(0, max_number+1, sequence_length)
+        sequence_onehot = np.eye(max_number+1)[sequence]
+        sequence_padded = np.concatenate([sequence_onehot, np.zeros((2, max_number+1))], axis=0)
 
-    # Place deux marqueurs aléatoirement
-    selected_indices = np.random.choice(sequence_length, 2, replace=False)
-    selection = np.zeros(sequence_length + 2).reshape(-1, 1)
-    selection[selected_indices] = 1
+        # Place deux marqueurs aléatoirement
+        selected_indices = np.random.choice(sequence_length, 2, replace=False)
+        selection = np.zeros(sequence_length + 2).reshape(-1, 1)
+        selection[selected_indices] = 1
 
-    # End flag column
-    endflag = np.zeros(sequence_length + 2).reshape(-1, 1)
-    endflag[sequence_length, 0] = 1
-    input = np.concatenate([sequence_padded, selection, endflag], axis=1)
+        # End flag column
+        endflag = np.zeros(sequence_length + 2).reshape(-1, 1)
+        endflag[sequence_length, 0] = 1
+        input = np.concatenate([sequence_padded, selection, endflag], axis=1)
 
-    # Calcule la somme des nombres aux positions marquées
-    result = sequence[selected_indices].sum()
-    target = np.zeros((sequence_length + 2, max_number * 2 + 1))
-    target[-1, result] = 1
+        # Calcule la somme des nombres aux positions marquées
+        result = sequence[selected_indices].sum()
+        target = np.zeros((sequence_length + 2, max_number * 2 + 1))
+        target[-1, result] = 1
 
-    return input, target
+        return input, target
 
-def generate_sorting_problem(sequence_length=1000, n_symbols=8):
+    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
+    return np.array(input), np.array(target)
+
+def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8):
     """
     [Multi sequence]
     Génère une séquence de symbols désordonné associé à un ordre. 
     Le modèle doit réordonner la séquence en fonction de l'ordre.
 
     Args:
+    - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - n_symbols (int): nombre de symboles possibles
 
     Return:
-    - input (sequence + 1 + zero_seq, n_symbols + 1 + order (sequence_length))
-    - target (zero_seq + 1 + sequence, n_symbols)
+    - input (n_samples, sequence + 1 + zero_seq, n_symbols + 1 + order (sequence_length))
+    - target (n_samples, zero_seq + 1 + sequence, n_symbols)
     """
+    def generate_one_sample():
+        # Create a sequence of symbols & a random order
+        sequence = np.random.randint(0, n_symbols, sequence_length)
+        order = np.random.permutation(sequence_length)
 
-    # Create a sequence of symbols & a random order
-    sequence = np.random.randint(0, n_symbols, sequence_length)
-    order = np.random.permutation(sequence_length)
+        # One-hot encode the sequence and order
+        sequence_onehot = np.eye(n_symbols)[sequence]
+        order_onehot = np.eye(sequence_length + 1)[order]
+        sequence_order = np.concatenate([sequence_onehot, order_onehot], axis=1)
 
-    # One-hot encode the sequence and order
-    sequence_onehot = np.eye(n_symbols)[sequence]
-    order_onehot = np.eye(sequence_length + 1)[order]
-    sequence_order = np.concatenate([sequence_onehot, order_onehot], axis=1)
+        # Create other input parts   
+        marker = np.zeros((1, n_symbols + sequence_length + 1))
+        marker[0, n_symbols+sequence_length] = 1
+        zero_input_pad = np.zeros((sequence_length, n_symbols + sequence_length + 1))
 
-    # Create other input parts   
-    marker = np.zeros((1, n_symbols + sequence_length + 1))
-    marker[0, n_symbols+sequence_length] = 1
-    zero_input_pad = np.zeros((sequence_length, n_symbols + sequence_length + 1))
+        # Create the input & target
+        input = np.concatenate([sequence_order, marker, zero_input_pad], axis=0)
+        target = np.zeros((sequence_length+1+sequence_length, n_symbols))
+        target[sequence_length + 1 + order] = sequence_onehot
 
-    # Create the input & target
-    input = np.concatenate([sequence_order, marker, zero_input_pad], axis=0)
-    target = np.zeros((sequence_length+1+sequence_length, n_symbols))
-    target[sequence_length + 1 + order] = sequence_onehot
-
-    return input, target
+        return input, target
+    
+    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
+    return np.array(input), np.array(target)
 
 
 
@@ -199,7 +218,7 @@ def generate_sorting_problem(sequence_length=1000, n_symbols=8):
 
 # ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
-def generate_discrete_pattern_completion(n_symbols=8, base_length=5, n_repetitions=4, proba_mask=0.2):
+def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base_length=5, proba_mask=0.2):
     """
     [Unique sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
@@ -215,7 +234,8 @@ def generate_discrete_pattern_completion(n_symbols=8, base_length=5, n_repetitio
     - target (sequence, n_symbols)
     """
     base_pattern = np.random.randint(1, n_symbols+1, size=base_length)
-    sequence = np.tile(base_pattern, n_repetitions)
+    n_repetitions = sequence_length // base_length + 1
+    sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
 
     # Masquer certaines parties pour que le modèle les prédise
     mask = np.random.random(sequence.shape) < proba_mask
@@ -227,7 +247,7 @@ def generate_discrete_pattern_completion(n_symbols=8, base_length=5, n_repetitio
 
     return input, target
 
-def generate_continuous_pattern_completion(base_length=5, n_repetitions=4, proba_mask=0.2):
+def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, proba_mask=0.2):
     """
     [Unique sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
@@ -242,7 +262,8 @@ def generate_continuous_pattern_completion(base_length=5, n_repetitions=4, proba
     - target (sequence, 1)
     """
     base_pattern = np.random.uniform(0, 1, size=base_length)
-    sequence = np.tile(base_pattern, n_repetitions)
+    n_repetitions = sequence_length // base_length + 1
+    sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
 
     # Masquer certaines parties pour que le modèle les prédise
     mask = np.random.random(sequence.shape) < proba_mask
@@ -254,19 +275,20 @@ def generate_continuous_pattern_completion(base_length=5, n_repetitions=4, proba
 
     return input, target
 
-def generate_bracket_matching(sequence_length=100, max_depth=5):
+def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5):
     """
     [Multi sequence]
     Génère une séquence de parenthèses que le modèle doit valider.
     Test la capacité à maintenir un contexte hiérarchique.
 
     Args:
+    - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - max_depth (int): profondeur maximale des parenthèses
 
     Return:
-    - input (sequence + 2, 3)
-    - target (sequence + 2, 1)
+    - input (n_samples, sequence + 2, 3)
+    - target (n_samples, sequence + 2, 1)
     """
     def generate_valid_sequence(length, max_depth):
         sequence = []
@@ -303,23 +325,27 @@ def generate_bracket_matching(sequence_length=100, max_depth=5):
             sequence[i] = bracket
         return sequence
 
-    # Generate a sequence
-    sequence = generate_valid_sequence(sequence_length, max_depth)
-    sequence = sequence if np.random.random() < 0.5 else mutate_sequence(sequence)
-    validity = check_validity(sequence)
+    def generate_one_sample():
+        # Generate a sequence
+        sequence = generate_valid_sequence(sequence_length, max_depth)
+        sequence = sequence if np.random.random() < 0.5 else mutate_sequence(sequence)
+        validity = check_validity(sequence)
 
-    # One-hot encode the sequence
-    sequence_onehot = np.zeros((sequence_length+2, 3))
-    for i, bracket in enumerate(sequence):
-        sequence_onehot[i, 0 if bracket == '(' else 1] = 1
-    sequence_onehot[-2, 2] = 1 # marker
+        # One-hot encode the sequence
+        sequence_onehot = np.zeros((sequence_length+2, 3))
+        for i, bracket in enumerate(sequence):
+            sequence_onehot[i, 0 if bracket == '(' else 1] = 1
+        sequence_onehot[-2, 2] = 1 # marker
 
-    # Create the input & target
-    input = sequence_onehot
-    target = np.zeros((sequence_length+2, 1))
-    target[-1, 0] = int(validity)
+        # Create the input & target
+        input = sequence_onehot
+        target = np.zeros((sequence_length+2, 1))
+        target[-1, 0] = int(validity)
 
-    return input, target
+        return input, target
+    
+    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
+    return np.array(input), np.array(target)
 
 
 

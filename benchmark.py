@@ -20,7 +20,8 @@ class Task:
     generator: Callable
     task_type: TaskType
     is_classification: bool
-    params: Dict[str, Any] = None
+    generator_params: Dict[str, Any] = None
+    model_params: Dict[str, Any] = None
 
 @dataclass
 class TaskResult:
@@ -38,13 +39,15 @@ class TaskResult:
 
 class BenchmarkSuite:
     def __init__(self, seed: int = 42):
-        self.tasks = {}
-        self.results = defaultdict(list)
+        # Set seed
         self.seed = seed
         np.random.seed(seed)
-        self._setup_logging()
-        
-    def _setup_logging(self):
+
+        # Initialize tasks and results
+        self.tasks = {}
+        self.results = defaultdict(list)
+
+        # Initialize logger
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s'
