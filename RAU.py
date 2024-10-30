@@ -84,14 +84,13 @@ class RAU:
             if self.reservoir_kind == 'single_attention':
                 x = x * (1 - self.leak_rate) + np.tanh(np.sum(queries * keys, axis=2).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             elif self.reservoir_kind == 'multiple_attention':
-                print("Multiple attention need to be re-checked.")
-                # x = x * (1 - self.leak_rate) + np.tanh(np.sum(queries @ keys.T).reshape(-1, 1) + self.bias) * self.leak_rate
-                # x = x * (1 - self.leak_rate) + np.tanh(np.max(queries @ keys.T).reshape(-1, 1) + self.bias) * self.leak_rate
-                pass
+                q = queries.reshape(sample_size, self.units, self.degree, 1)
+                k = keys.reshape(sample_size, self.units, 1, self.degree)
+                x = x * (1 - self.leak_rate) + np.tanh(np.sum(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
+                x = x * (1 - self.leak_rate) + np.tanh(np.max(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             elif self.reservoir_kind == 'no_attention':
-                print("No attention need to be re-checked.")
-                # inputs = np.concatenate([queries, keys], axis=1)
-                # x = x * (1 - self.leak_rate) + np.tanh(np.sum(inputs, axis=1).reshape(-1, 1) + self.bias) * self.leak_rate
+                inputs = np.concatenate([queries, keys], axis=-1)
+                x = x * (1 - self.leak_rate) + np.tanh(np.sum(inputs, axis=-1).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             else:
                 raise ValueError('Invalid reservoir kind')
             activity.append(x)
@@ -101,8 +100,8 @@ class RAU:
     
     def train(self, X, Y):
         # Check X dimensions
-        if len(X.shape) != 3:
-            raise ValueError(f"X must have 3 dimensions (sample, time, dim), got {len(X.shape)}")
+        if len(X.shape) == 2: # (time, input_dim) 
+            X = X.reshape(1, X.shape[0], X.shape[1]) # (sample, time, input_dim)
 
         # Compute activity for X with attention units
         activity = self._compute_activity(X) # (sample, time, units)
