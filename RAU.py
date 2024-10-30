@@ -74,7 +74,6 @@ class RAU:
         Retourne :
         np.ndarray : L'activité du réseau.
         """
-        print(X.shape)
         sample_size = X.shape[0]
         time = X.shape[1]
         x = np.zeros((sample_size, self.units, 1)) + self.bias
@@ -85,12 +84,14 @@ class RAU:
             if self.reservoir_kind == 'single_attention':
                 x = x * (1 - self.leak_rate) + np.tanh(np.sum(queries * keys, axis=2).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             elif self.reservoir_kind == 'multiple_attention':
-                x = x * (1 - self.leak_rate) + np.tanh(np.sum(queries @ keys.T).reshape(-1, 1) + self.bias) * self.leak_rate
-                x = x * (1 - self.leak_rate) + np.tanh(np.max(queries @ keys.T).reshape(-1, 1) + self.bias) * self.leak_rate
+                print("Multiple attention need to be re-checked.")
+                # x = x * (1 - self.leak_rate) + np.tanh(np.sum(queries @ keys.T).reshape(-1, 1) + self.bias) * self.leak_rate
+                # x = x * (1 - self.leak_rate) + np.tanh(np.max(queries @ keys.T).reshape(-1, 1) + self.bias) * self.leak_rate
                 pass
             elif self.reservoir_kind == 'no_attention':
-                inputs = np.concatenate([queries, keys], axis=1)
-                x = x * (1 - self.leak_rate) + np.tanh(np.sum(inputs, axis=1).reshape(-1, 1) + self.bias) * self.leak_rate
+                print("No attention need to be re-checked.")
+                # inputs = np.concatenate([queries, keys], axis=1)
+                # x = x * (1 - self.leak_rate) + np.tanh(np.sum(inputs, axis=1).reshape(-1, 1) + self.bias) * self.leak_rate
             else:
                 raise ValueError('Invalid reservoir kind')
             activity.append(x)
