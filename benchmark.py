@@ -10,15 +10,10 @@ from enum import Enum
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
 
-class TaskType(Enum):
-    SINGLE_SEQUENCE = "single_sequence"
-    MULTI_SEQUENCE = "multi_sequence"
-
 @dataclass
 class Task:
     name: str
     generator: Callable
-    task_type: TaskType
     is_classification: bool
     generator_params: Dict[str, Any] = None
     model_params: Dict[str, Any] = None
@@ -130,28 +125,31 @@ class BenchmarkSuite:
         train_size = int(0.8 * len(X))
         return (X[:train_size], Y[:train_size]), (X[train_size:], Y[train_size:])
 
-    # def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, is_classification: bool) -> Dict[str, float]:
-    #     """Évalue les prédictions selon le type de tâche"""
-    #     if is_classification:
-    #         # Convert to class indices if needed
-    #         if len(y_true.shape) > 2:
-    #             y_true = np.argmax(y_true, axis=-1)
-    #         if len(y_pred.shape) > 2:
-    #             y_pred = np.argmax(y_pred, axis=-1)
+    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, is_classification: bool) -> Dict[str, float]:
+        """Évalue les prédictions selon le type de tâche"""
+        if is_classification:
+            # Convert to class indices if needed
+            if len(y_true.shape) > 2:
+                y_true = np.argmax(y_true, axis=-1)
+            if len(y_pred.shape) > 2:
+                y_pred = np.argmax(y_pred, axis=-1)
                 
-    #         return {
-    #             'accuracy': accuracy_score(y_true.flatten(), y_pred.flatten()),
-    #             'precision': precision_score(y_true.flatten(), y_pred.flatten(), average='weighted', zero_division=0),
-    #             'recall': recall_score(y_true.flatten(), y_pred.flatten(), average='weighted', zero_division=0),
-    #             'mse': root_mean_squared_error(y_true, y_pred)
-    #         }
-    #     else:
-    #         return {
-    #             'accuracy': 0.0,  # Non applicable pour la régression
-    #             'precision': None,
-    #             'recall': None,
-    #             'mse': root_mean_squared_error(y_true, y_pred)
-    #         }
+            return {
+                'accuracy': accuracy_score(y_true.flatten(), y_pred.flatten()),
+                'precision': precision_score(y_true.flatten(), y_pred.flatten(), average='weighted', zero_division=0),
+                'recall': recall_score(y_true.flatten(), y_pred.flatten(), average='weighted', zero_division=0),
+                'mse': root_mean_squared_error(y_true, y_pred)
+            }
+        else:
+            return {
+                'accuracy': 0.0,  # Non applicable pour la régression
+                'precision': None,
+                'recall': None,
+                'mse': root_mean_squared_error(y_true, y_pred)
+            }
+
+
+
 
 
     # def generate_report(self, output_path: str = 'benchmark_results'):
