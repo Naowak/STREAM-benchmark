@@ -103,8 +103,8 @@ class RAU:
             elif self.reservoir_kind == 'multiple_attention':
                 q = queries.reshape(sample_size, self.units, self.degree, 1)
                 k = keys.reshape(sample_size, self.units, 1, self.degree)
-                #x = x * (1 - self.leak_rate) + np.tanh(np.sum(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
-                x = x * (1 - self.leak_rate) + np.tanh(np.max(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
+                x = x * (1 - self.leak_rate) + np.tanh(np.sum(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
+                #x = x * (1 - self.leak_rate) + np.tanh(np.max(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             elif self.reservoir_kind == 'no_attention':
                 inputs = np.concatenate([queries, keys], axis=-1)
                 x = x * (1 - self.leak_rate) + np.tanh(np.sum(inputs, axis=-1).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
@@ -113,7 +113,7 @@ class RAU:
             activity.append(x) # (time, sample, units)
             
         # Reshape activity
-        activity = np.array(activity).reshape(sample_size, time, self.units) # (sample, time, units)
+        activity = np.array(activity).reshape(time, sample_size, self.units).transpose(1, 0, 2) # (sample, time, units)
 
         return activity
     
