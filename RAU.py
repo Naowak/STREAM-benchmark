@@ -17,6 +17,13 @@ class RAU:
         leak_rate (float) : Le taux de fuite.
         reservoir_kind (str) : Le type de réservoir (single_attention, multiple_attention, no_attention).
         """
+        # Check parameters
+        if degree > units or degree > input_dim or degree < 1:
+            raise ValueError('Degree must be positive and less than or equal to units and input_dim')
+        if reservoir_kind not in ['single_attention', 'multiple_attention', 'no_attention']:
+            raise ValueError('Reservoir kind must be single_attention, multiple_attention or no_attention')
+
+        # Initialize parameters
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.units = units
@@ -69,40 +76,55 @@ class RAU:
         Calcule l'activité du réseau de neurones récurrents.
 
         Paramètres :
-        X (np.ndarray) : Les données d'entrée.
+        X (np.ndarray) : Les données d'entrée. (sample, time, input_dim) or (time, input_dim)
 
         Retourne :
         np.ndarray : L'activité du réseau.
         """
+         # Check X dimensions
+        if len(X.shape) == 2: # (time, input_dim) 
+            X = X.reshape(1, X.shape[0], X.shape[1]) # (sample, time, input_dim)
+
+        # Initialize activity
         sample_size = X.shape[0]
         time = X.shape[1]
         x = np.zeros((sample_size, self.units, 1)) + self.bias
-        activity = []
+        activity = [] 
+
+        # Compute activity
         for i in range(time):
+            # Queries and keys
             queries = (self.Win * X[:, i, :].reshape(sample_size, 1, self.input_dim))[:, self.Win_mask != 0].reshape(sample_size, self.units, self.degree)
             keys = (self.W * x.reshape(sample_size, 1, self.units))[:, self.W_mask != 0].reshape(sample_size, self.units, self.degree)
+
+            # Update activity
             if self.reservoir_kind == 'single_attention':
                 x = x * (1 - self.leak_rate) + np.tanh(np.sum(queries * keys, axis=2).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             elif self.reservoir_kind == 'multiple_attention':
                 q = queries.reshape(sample_size, self.units, self.degree, 1)
                 k = keys.reshape(sample_size, self.units, 1, self.degree)
-                x = x * (1 - self.leak_rate) + np.tanh(np.sum(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
+                #x = x * (1 - self.leak_rate) + np.tanh(np.sum(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
                 x = x * (1 - self.leak_rate) + np.tanh(np.max(q @ k, axis=(2, 3)).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
             elif self.reservoir_kind == 'no_attention':
                 inputs = np.concatenate([queries, keys], axis=-1)
                 x = x * (1 - self.leak_rate) + np.tanh(np.sum(inputs, axis=-1).reshape(sample_size, self.units, 1) + self.bias) * self.leak_rate
-            else:
-                raise ValueError('Invalid reservoir kind')
-            activity.append(x)
-        activity = np.array(activity).reshape(sample_size, time, self.units)
+            
+            # Save activity
+            activity.append(x) # (time, sample, units)
+            
+        # Reshape activity
+        activity = np.array(activity).reshape(sample_size, time, self.units) # (sample, time, units)
 
         return activity
     
     def train(self, X, Y):
-        # Check X dimensions
-        if len(X.shape) == 2: # (time, input_dim) 
-            X = X.reshape(1, X.shape[0], X.shape[1]) # (sample, time, input_dim)
-
+        """
+        Entraîne le réseau de neurones récurrents.
+        
+        Paramètres :
+        X (np.ndarray) : Les données d'entrée. (sample, time, input_dim) or (time, input_dim)
+        Y (np.ndarray) : Les données de sortie. (sample, time, output_dim) or (time, output_dim)
+        """
         # Compute activity for X with attention units
         activity = self._compute_activity(X) # (sample, time, units)
 
@@ -111,9 +133,18 @@ class RAU:
         self.readout.fit(activity.reshape(-1, self.units), Y.reshape(-1, self.output_dim))
 
     def run(self, X):
+        """
+        Prédit les données de sortie à partir des données d'entrée.
+
+        Paramètres :
+        X (np.ndarray) : Les données d'entrée. (sample, time, input_dim) or (time, input_dim)
+
+        Retourne :
+        np.ndarray : Les prédictions. (sample, time, output_dim)
+        """
         activity = self._compute_activity(X) # (sample, time, units)
-        preds = self.readout.predict(activity.reshape(-1, self.units))
-        return preds.reshape(X.shape[0], X.shape[1], self.output_dim)
+        preds = self.readout.predict(activity.reshape(-1, self.units)) # (sample * time, output_dim)
+        return preds.reshape(X.shape[0], X.shape[1], self.output_dim) # (sample, time, output_dim)
 
 
 
