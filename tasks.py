@@ -1,8 +1,25 @@
 import numpy as np
 
+
+# ------------ USEFULL FUNCTIONS ------------ #
+
+def _generate_train_test_samples(n_samples, training_ratio, generate_one_sample):
+    # Generate the samples
+    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
+    input, target = np.array(input), np.array(target)
+    
+    # Split the data into training and testing set
+    training_size = int(n_samples * training_ratio)
+    X_train = input[:training_size, :, :]
+    Y_train = target[:training_size, :, :]
+    X_test = input[training_size:, :, :]
+    Y_test = target[training_size:, :, :]
+
+    return X_train, Y_train, X_test, Y_test
+
 # ------------ TEST DE MEMOIRE SIMPLE ------------ #
 
-def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8):
+def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8, training_ratio=0.8):
     """
     [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
@@ -12,22 +29,38 @@ def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8):
     - sequence_length (int): longueur de la séquence
     - delay (int): délai avant de reproduire la séquence
     - n_symbols (int): nombre de symboles possibles
+    - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
 
     Return:
-    - input (sequence + delay, n_symbols + 1)
-    - target (delay + sequence, n_symbols + 1)
+    - X_train (1, sequence + delay, n_symbols + 1)
+    - Y_train (1, delay + sequence, n_symbols + 1)
+    - X_test (1, sequence + delay, n_symbols + 1)
+    - Y_test (1, delay + sequence, n_symbols + 1)
     """
-    input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)
-    delay = np.zeros(delay)
-    
-    input_data = np.concatenate([input_sequence, delay]).astype(int)
-    target_data = np.concatenate([delay, input_sequence]).astype(int)
-    input_onehot = np.eye(n_symbols+1)[input_data]
-    target_onehot = np.eye(n_symbols+1)[target_data]
-    
-    return input_onehot, target_onehot
+    # Compute the size of the training and testing set
+    training_size = int(sequence_length * training_ratio)
+    testing_size = sequence_length - training_size
 
-def generate_continue_postcasting(sequence_length=1000, delay=10):
+    # Generate the sequence
+    train_sequence = np.random.randint(1, n_symbols+1, size=training_size-delay)
+    test_sequence = np.random.randint(1, n_symbols+1, size=testing_size-delay)
+    delay = np.zeros(delay)
+
+    # Concatenate the sequence and the delay
+    X_train = np.concatenate([train_sequence, delay]).astype(int)
+    Y_train = np.concatenate([delay, train_sequence]).astype(int)
+    X_test = np.concatenate([test_sequence, delay]).astype(int)
+    Y_test = np.concatenate([delay, test_sequence]).astype(int)
+    
+    # One-hot encoding
+    X_train = np.eye(n_symbols+1)[X_train]
+    Y_train = np.eye(n_symbols+1)[Y_train]
+    X_test = np.eye(n_symbols+1)[X_test]
+    Y_test = np.eye(n_symbols+1)[Y_test]
+    
+    return X_train, Y_train, X_test, Y_test
+
+def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio=0.8):
     """
     [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
@@ -36,20 +69,32 @@ def generate_continue_postcasting(sequence_length=1000, delay=10):
     Args:
     - sequence_length (int): longueur de la séquence
     - delay (int): délai avant de reproduire la séquence
+    - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
 
     Return:
-    - input (sequence + delay, 1)
-    - target (delay + sequence, 1)
+    - X_train (1, sequence + delay, 1)
+    - Y_train (1, delay + sequence, 1)
+    - X_test (1, sequence + delay, 1)
+    - Y_test (1, delay + sequence, 1)
     """
-    input_sequence = np.random.uniform(-0.8, 0.8, size=sequence_length)
-    delay = np.zeros(delay)
-    
-    input_data = np.concatenate([input_sequence, delay]).reshape(-1, 1)
-    target_data = np.concatenate([delay, input_sequence]).reshape(-1, 1)
-    
-    return input_data, target_data
+    # Compute the size of the training and testing set
+    training_size = int(sequence_length * training_ratio)
+    testing_size = sequence_length - training_size
 
-def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=8):
+    # Generate the sequence
+    training_sequence = np.random.uniform(-0.8, 0.8, size=training_size-delay)
+    test_sequence = np.random.uniform(-0.8, 0.8, size=testing_size-delay)
+    delay = np.zeros(delay)
+
+    # Concatenate the sequence and the delay
+    X_train = np.concatenate([training_sequence, delay]).reshape(1, training_size, 1)
+    Y_train = np.concatenate([delay, training_sequence]).reshape(1, training_size, 1)
+    X_test = np.concatenate([test_sequence, delay]).reshape(1, testing_size, 1)
+    Y_test = np.concatenate([delay, test_sequence]).reshape(1, testing_size, 1)
+    
+    return X_train, Y_train, X_test, Y_test
+
+def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=8, training_ratio=0.8):
     """
     [Multi sequence]
     Génère une tâche de copie : le modèle doit lire l'ensemble d'une séquence, 
@@ -60,28 +105,34 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     - sequence_length (int): longueur de la séquence
     - delay (int): délai avant de reproduire la séquence
     - n_symbols (int): nombre de symboles possibles
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - input (n_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (marker))
-    - target (n_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (marker))
+    - X_train (n_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 2 (zero+signal))
+    - Y_train (n_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (zero))
+    - X_test (n_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 2 (zero+signal))
+    - Y_test (n_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (zero))
     """
-    def generate_one_sample():
+    def generate_one_sample(delay):
         input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)  # 8 symboles possibles
-        marker = n_symbols + 1  # marqueur de début de reproduction
+        signal = n_symbols + 1  # marqueur de début de reproduction
         delay = np.zeros(delay)
         zero_sequence = np.zeros(sequence_length)
         
-        input_data = np.concatenate([input_sequence, delay, [marker], zero_sequence]).astype(int)
+        input_data = np.concatenate([input_sequence, delay, [signal], zero_sequence]).astype(int)
         target_data = np.concatenate([zero_sequence, delay, [0], input_sequence]).astype(int)
         input_onehot = np.eye(n_symbols+2)[input_data]
-        target_onehot = np.eye(n_symbols+2)[target_data]
+        target_onehot = np.eye(n_symbols+1)[target_data]
 
         return input_onehot, target_onehot
+    
+    # Generate the samples
+    generate = lambda: generate_one_sample(delay)
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate)
+    
+    return X_train, Y_train, X_test, Y_test
 
-    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
-    return np.array(input), np.array(target)
-
-def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=2, n_symbols=8):
+def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=2, n_symbols=8, training_ratio=0.8):
     """
     [Multi sequence]
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
@@ -92,44 +143,46 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=
     - sequence_length (int): longueur de la séquence
     - n_markers (int): nombre d'éléments à mémoriser
     - n_symbols (int): nombre de symboles possibles
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return: 
-    - input (n_samples, sequence + 1 (endflag) + n_markers (zero), n_symbols + 2 (pin and endflag))
-    - target (n_samples, zero_sequence + 1 (endflag) + n_markers, n_symbols)
+    - X_train (n_samples, sequence + 1 (endflag) + n_markers (zero), n_symbols + 3 (zero, pin and endflag))
+    - Y_train (n_samples, zero_sequence + 1 (endflag) + n_markers, n_symbols + 1 (zero))
+    - X_test (n_samples, sequence + 1 (endflag) + n_markers (zero), n_symbols + 3 (zero, pin and endflag))
+    - Y_test (n_samples, zero_sequence + 1 (endflag) + n_markers, n_symbols + 1 (zero))
     """
     def generate_one_sample():
         # generate random onehot sequence
-        sequence = np.random.randint(0, n_symbols, size=sequence_length)
-        sequence_onehot = np.eye(n_symbols)[sequence]
-        sequence_padded = np.concatenate([sequence_onehot, np.zeros((1+n_markers, n_symbols))], axis=0)
-        sequence_padded
+        sequence = np.random.randint(1, n_symbols+1, size=sequence_length)
+        sequence_padded = np.concatenate([sequence, np.zeros(1 + n_markers)], axis=0)
+        sequence_onehot = np.eye(n_symbols+1)[sequence_padded]
 
         # selection column
         selected_indices = np.random.choice(sequence_length, n_markers, replace=False)
-        selection = np.zeros(sequence_length + n_markers + 1).reshape(-1, 1)
+        selection = np.zeros(sequence_length + 1 + n_markers).reshape(-1, 1)
         selection[selected_indices, 0] = 1
 
         # end flag column
-        endflag = np.zeros(sequence_length + n_markers + 1).reshape(-1, 1)
+        endflag = np.zeros(sequence_length + 1 + n_markers).reshape(-1, 1)
         endflag[sequence_length, 0] = 1
         input = np.concatenate([sequence_padded, selection, endflag], axis=1)
 
         # Compute target
-        target = np.zeros((sequence_length + n_markers + 1, n_symbols))
+        target = np.zeros((sequence_length + 1 + n_markers, n_symbols+1))
         target[-n_markers:, :] = sequence_onehot[selected_indices, :]
 
         return input, target
-    
-    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
-    return np.array(input), np.array(target)
 
+    # Generate the samples
+    generate = lambda: generate_one_sample()
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate)
 
-
+    return X_train, Y_train, X_test, Y_test
 
 
 # ------------ TEST DE MANIPULATION DE L'INFORMATION RETENUE ------------ #
 
-def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9):
+def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, training_ratio=0.8):
     """
     [Multi sequence]
     Version classique : deux séquences parallèles
@@ -141,6 +194,7 @@ def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9):
     - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - max_number (int): nombre maximal possible
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
     - input (n_samples, sequence + endflag + zero (1), max_number + marker + endflag)
@@ -168,11 +222,13 @@ def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9):
         target[-1, result] = 1
 
         return input, target
+    
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
-    return np.array(input), np.array(target)
+    return X_train, Y_train, X_test, Y_test
 
-def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8):
+def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, training_ratio=0.8):
     """
     [Multi sequence]
     Génère une séquence de symbols désordonné associé à un ordre. 
@@ -182,6 +238,7 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8):
     - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - n_symbols (int): nombre de symboles possibles
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
     - input (n_samples, sequence + 1 + zero_seq, n_symbols + 1 + order (sequence_length))
@@ -209,30 +266,35 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8):
 
         return input, target
     
-    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
-    return np.array(input), np.array(target)
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-
-
-
+    return X_train, Y_train, X_test, Y_test
 
 # ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
-def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base_length=5, proba_mask=0.2):
+def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base_length=5, proba_mask=0.2, training_ratio=0.8):
     """
     [Unique sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
+    La sequence consiste à répéter un motif de longueur base_length et de dimension n_symbols + 1.
+    Le premier symbole est un marqueur indiquant quand le modèle doit prédire le motif.
+    Les autres symboles sont des éléments du motif.
 
     Args:
     - n_symbols (int): nombre de symboles possibles
     - base_length (int): longueur du motif
     - n_repetitions (int): nombre de répétitions du motif
     - proba_mask (float): probabilité de masquer un symbole
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - input (sequence, n_symbols + 1)
-    - target (sequence, n_symbols)
+    - X_train (1, sequence, n_symbols + 1)
+    - Y_train (1, sequence, n_symbols)
+    - X_test (1, sequence, n_symbols + 1)
+    - Y_test (1, sequence, n_symbols)
     """
+    # Génère un motif de base
     base_pattern = np.random.randint(1, n_symbols+1, size=base_length)
     n_repetitions = sequence_length // base_length + 1
     sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
@@ -242,12 +304,20 @@ def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base
     masked_sequence = sequence.copy()
     masked_sequence[mask] = 0
 
+    # One-hot encoding
     input = np.eye(n_symbols+1)[masked_sequence]
     target = np.eye(n_symbols+1)[sequence][:, 1:]
 
-    return input, target
+    # Split the data into training and testing set
+    training_size = int(sequence_length * training_ratio)
+    X_train = input[:training_size, :]
+    Y_train = target[:training_size, :]
+    X_test = input[training_size:, :]
+    Y_test = target[training_size:, :]
 
-def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, proba_mask=0.2):
+    return X_train, Y_train, X_test, Y_test
+
+def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, proba_mask=0.2, training_ratio=0.8):
     """
     [Unique sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
@@ -258,9 +328,12 @@ def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, 
     - proba_mask (float): probabilité de masquer un symbole
 
     Return:
-    - input (sequence, 1)
-    - target (sequence, 1)
+    - X_train (1, sequence, 1)
+    - Y_train (1, sequence, 1)
+    - X_test (1, sequence, 1)
+    - Y_test (1, sequence, 1)
     """
+    # Génère un motif de base
     base_pattern = np.random.uniform(0, 1, size=base_length)
     n_repetitions = sequence_length // base_length + 1
     sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
@@ -270,12 +343,21 @@ def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, 
     masked_sequence = sequence.copy()
     masked_sequence[mask] = -1
 
+    # Split the data into training and testing set
     input = masked_sequence.reshape(-1, 1)
     target = sequence.reshape(-1, 1)
 
-    return input, target
+    # Split the data into training and testing set
+    training_size = int(sequence_length * training_ratio)
+    testing_size = sequence_length - training_size
+    X_train = input[:training_size, :].reshape(1, training_size, 1)
+    Y_train = target[:training_size, :].reshape(1, training_size, 1)
+    X_test = input[training_size:, :].reshape(1, testing_size, 1)
+    Y_test = target[training_size:, :].reshape(1, testing_size, 1)
 
-def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5):
+    return X_train, Y_train, X_test, Y_test
+
+def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, training_ratio=0.8):
     """
     [Multi sequence]
     Génère une séquence de parenthèses que le modèle doit valider.
@@ -287,8 +369,10 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5):
     - max_depth (int): profondeur maximale des parenthèses
 
     Return:
-    - input (n_samples, sequence + 2, 3)
-    - target (n_samples, sequence + 2, 1)
+    - X_train (training_samples, sequence + 2, 3)
+    - Y_train (training_samples, sequence + 2, 1)
+    - X_test (testing_samples, sequence + 2, 3)
+    - Y_test (testing_samples, sequence + 2, 1)
     """
     def generate_valid_sequence(length, max_depth):
         sequence = []
@@ -344,15 +428,15 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5):
 
         return input, target
     
-    input, target = zip(*[generate_one_sample() for _ in range(n_samples)])
-    return np.array(input), np.array(target)
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-
+    return X_train, Y_train, X_test, Y_test
 
 
 # ------------ TEST DE TRAITEMENT DU SIGNAL ------------ #
 
-def generate_sin_forecasting(sequence_length=1000, forecast_length=1):
+def generate_sin_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
     """
     [Unique sequence]
     Génère un signal sinusoïdal modulé en fréquence.
@@ -363,24 +447,34 @@ def generate_sin_forecasting(sequence_length=1000, forecast_length=1):
     - forecast_length (int): longueur de la prédiction
 
     Return:
-    - input (sequence, 1)
-    - target (sequence, 1)
+    - X_train (1, sequence, 1)
+    - Y_train (1, sequence, 1)
+    - X_test (1, sequence, 1)
+    - Y_test (1, sequence, 1)
     """
+    # Generate the signal
     length = sequence_length + forecast_length
     max_value = length / 100
     t = np.linspace(0, max_value, length)
     carrier_freq = 10
     modulator_freq = 0.5
-
     modulator = np.sin(2 * np.pi * modulator_freq * t)
     carrier = np.sin(2 * np.pi * carrier_freq * t + modulator)
 
-    input = carrier[:-forecast_length].reshape(-1, 1)
-    target = carrier[forecast_length:].reshape(-1, 1)
+    # Create the input & target
+    input = carrier[:-forecast_length].reshape(1, -1, 1)
+    target = carrier[forecast_length:].reshape(1, -1, 1)
 
-    return input, target
+    # Split the data into training and testing set
+    training_size = int(sequence_length * training_ratio)
+    X_train = input[:, :training_size, :]
+    Y_train = target[:, :training_size, :]
+    X_test = input[:, training_size:, :]
+    Y_test = target[:, training_size:, :]
 
-def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1):
+    return X_train, Y_train, X_test, Y_test
+
+def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
     """
     [Unique sequence]
     Génère une série temporelle chaotique (système de Lorenz).
@@ -389,17 +483,21 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1):
     Args:
     - sequence_length (int): longueur de la séquence
     - forecast_length (int): longueur de la prédiction
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
+    -
     - input (sequence, 3)
     - target (sequence, 3)
     """
+    # Define the Lorenz system
     def lorenz(x, y, z, s=10, r=28, b=2.667):
         dx = s * (y - x)
         dy = r * x - y - x * z
         dz = x * y - b * z
         return dx, dy, dz
     
+    # Generate the Lorenz system
     dt = 0.01
     stepCnt = sequence_length + forecast_length
     
@@ -415,8 +513,15 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1):
         ys[i + 1] = ys[i] + (dy * dt)
         zs[i + 1] = zs[i] + (dz * dt)
 
+    # Create the input & target
     input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length]))
     target = np.column_stack((xs[forecast_length:], ys[forecast_length:], zs[forecast_length:]))
 
-    return input, target
-    
+    # Split the data into training and testing set
+    training_size = int(sequence_length * training_ratio)
+    X_train = input[:training_size, :]
+    Y_train = target[:training_size, :]
+    X_test = input[training_size:, :]
+    Y_test = target[training_size:, :]
+
+    return X_train, Y_train, X_test, Y_test    
