@@ -274,7 +274,7 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
 
 # ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
-def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base_length=5, proba_mask=0.2, training_ratio=0.8):
+def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
     [Unique sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
@@ -286,28 +286,29 @@ def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base
     - n_symbols (int): nombre de symboles possibles
     - base_length (int): longueur du motif
     - n_repetitions (int): nombre de répétitions du motif
-    - proba_mask (float): probabilité de masquer un symbole
+    - mask_ratio (float): proportion de masquer un symbole
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (1, sequence, n_symbols + 1)
-    - Y_train (1, sequence, n_symbols)
-    - X_test (1, sequence, n_symbols + 1)
-    - Y_test (1, sequence, n_symbols)
+    - X_train (1, training_sequence, n_symbols + marker)
+    - Y_train (1, training_sequence, n_symbols)
+    - X_test (1, testing_sequence, n_symbols + marker)
+    - Y_test (1, testing_sequence, n_symbols)
     """
     # Génère un motif de base
-    base_pattern = np.random.randint(1, n_symbols+1, size=base_length)
+    base_pattern = np.random.randint(0, n_symbols, size=base_length)
     n_repetitions = sequence_length // base_length + 1
     sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
 
     # Masquer certaines parties pour que le modèle les prédise
-    mask = np.random.random(sequence.shape) < proba_mask
+    nb_masked = int(sequence_length * mask_ratio)
+    mask = np.random.choice(sequence_length, nb_masked, replace=False)
     masked_sequence = sequence.copy()
-    masked_sequence[mask] = 0
+    masked_sequence[mask] = n_symbols # Marker for masked values
 
     # One-hot encoding
     input = np.eye(n_symbols+1)[masked_sequence]
-    target = np.eye(n_symbols+1)[sequence][:, 1:]
+    target = np.eye(n_symbols)[sequence]
 
     # Split the data into training and testing set
     training_size = int(sequence_length * training_ratio)
@@ -318,7 +319,7 @@ def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base
 
     return X_train, Y_train, X_test, Y_test
 
-def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, proba_mask=0.2, training_ratio=0.8):
+def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
     [Unique sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
@@ -326,13 +327,14 @@ def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, 
     Args:
     - base_length (int): longueur du motif
     - n_repetitions (int): nombre de répétitions du motif
-    - proba_mask (float): probabilité de masquer un symbole
+    - mask_ratio (float): proportion de symboles masqués
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (1, sequence, 1)
-    - Y_train (1, sequence, 1)
-    - X_test (1, sequence, 1)
-    - Y_test (1, sequence, 1)
+    - X_train (1, training_sequence, 1)
+    - Y_train (1, training_sequence, 1)
+    - X_test (1, testing_sequence, 1)
+    - Y_test (1, testing_sequence, 1)
     """
     # Génère un motif de base
     base_pattern = np.random.uniform(0, 1, size=base_length)
@@ -340,7 +342,8 @@ def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, 
     sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
 
     # Masquer certaines parties pour que le modèle les prédise
-    mask = np.random.random(sequence.shape) < proba_mask
+    nb_masked = int(sequence_length * mask_ratio)
+    mask = np.random.choice(sequence_length, nb_masked, replace=False)
     masked_sequence = sequence.copy()
     masked_sequence[mask] = -1
 
@@ -368,12 +371,13 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, 
     - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - max_depth (int): profondeur maximale des parenthèses
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (training_samples, sequence + 2, 3)
-    - Y_train (training_samples, sequence + 2, 1)
-    - X_test (testing_samples, sequence + 2, 3)
-    - Y_test (testing_samples, sequence + 2, 1)
+    - X_train (training_samples, sequence + trigger + 1, 3)
+    - Y_train (training_samples, sequence + trigger + 1, 1)
+    - X_test (testing_samples, sequence + trigger + 1, 3)
+    - Y_test (testing_samples, sequence + trigger + 1, 1)
     """
     def generate_valid_sequence(length, max_depth):
         sequence = []
