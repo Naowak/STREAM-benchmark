@@ -17,6 +17,8 @@ def _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
     return X_train, Y_train, X_test, Y_test
 
+
+
 # ------------ TEST DE MEMOIRE SIMPLE ------------ #
 
 def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8, training_ratio=0.8):
@@ -32,31 +34,28 @@ def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8, t
     - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
 
     Return:
-    - X_train (1, sequence + delay, n_symbols + 1)
-    - Y_train (1, delay + sequence, n_symbols + 1)
-    - X_test (1, sequence + delay, n_symbols + 1)
-    - Y_test (1, delay + sequence, n_symbols + 1)
+    - X_train (1, training_sequence, n_symbols)
+    - Y_train (1, delay + training_sequence[:-delay], n_symbols)
+    - X_test (1, testing_sequence, n_symbols)
+    - Y_test (1, delay + testing_sequence[:-delay], n_symbols)
     """
     # Compute the size of the training and testing set
     training_size = int(sequence_length * training_ratio)
     testing_size = sequence_length - training_size
 
     # Generate the sequence
-    train_sequence = np.random.randint(1, n_symbols+1, size=training_size-delay)
-    test_sequence = np.random.randint(1, n_symbols+1, size=testing_size-delay)
-    delay = np.zeros(delay)
+    train_sequence = np.random.randint(0, n_symbols, size=training_size)
+    test_sequence = np.random.randint(0, n_symbols, size=testing_size)
 
-    # Concatenate the sequence and the delay
-    X_train = np.concatenate([train_sequence, delay]).astype(int)
-    Y_train = np.concatenate([delay, train_sequence]).astype(int)
-    X_test = np.concatenate([test_sequence, delay]).astype(int)
-    Y_test = np.concatenate([delay, test_sequence]).astype(int)
-    
-    # One-hot encoding
-    X_train = np.eye(n_symbols+1)[X_train]
-    Y_train = np.eye(n_symbols+1)[Y_train]
-    X_test = np.eye(n_symbols+1)[X_test]
-    Y_test = np.eye(n_symbols+1)[Y_test]
+    # One hot encoding
+    train_onehot = np.eye(n_symbols)[train_sequence].reshape(1, training_size, n_symbols)
+    test_onehot = np.eye(n_symbols)[test_sequence].reshape(1, testing_size, n_symbols)
+
+    # Create training and testing set
+    X_train = train_onehot
+    Y_train = np.concatenate([np.zeros((1, delay, n_symbols)), train_onehot[:, :-delay, :]], axis=1)
+    X_test = test_onehot
+    Y_test = np.concatenate([np.zeros((1, delay, n_symbols)), test_onehot[:, :-delay, :]], axis=1)
     
     return X_train, Y_train, X_test, Y_test
 
@@ -72,25 +71,25 @@ def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio
     - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
 
     Return:
-    - X_train (1, sequence + delay, 1)
-    - Y_train (1, delay + sequence, 1)
-    - X_test (1, sequence + delay, 1)
-    - Y_test (1, delay + sequence, 1)
+    - X_train (1, sequence, 1)
+    - Y_train (1, delay + sequence[:-delay], 1)
+    - X_test (1, sequence, 1)
+    - Y_test (1, delay + sequence[:-delay], 1)
     """
     # Compute the size of the training and testing set
     training_size = int(sequence_length * training_ratio)
     testing_size = sequence_length - training_size
 
     # Generate the sequence
-    training_sequence = np.random.uniform(-0.8, 0.8, size=training_size-delay)
-    test_sequence = np.random.uniform(-0.8, 0.8, size=testing_size-delay)
-    delay = np.zeros(delay)
+    training_sequence = np.random.uniform(-0.8, 0.8, size=training_size)
+    test_sequence = np.random.uniform(-0.8, 0.8, size=testing_size)
+    delay_sequence = np.zeros(delay)
 
     # Concatenate the sequence and the delay
-    X_train = np.concatenate([training_sequence, delay]).reshape(1, training_size, 1)
-    Y_train = np.concatenate([delay, training_sequence]).reshape(1, training_size, 1)
-    X_test = np.concatenate([test_sequence, delay]).reshape(1, testing_size, 1)
-    Y_test = np.concatenate([delay, test_sequence]).reshape(1, testing_size, 1)
+    X_train = training_sequence.reshape(1, training_size, 1)
+    Y_train = np.concatenate([delay_sequence, training_sequence[:-delay]]).reshape(1, training_size, 1)
+    X_test = test_sequence.reshape(1, testing_size, 1)
+    Y_test = np.concatenate([delay_sequence, test_sequence[:-delay]]).reshape(1, testing_size, 1)
     
     return X_train, Y_train, X_test, Y_test
 
@@ -108,23 +107,25 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (n_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 2 (zero+signal))
-    - Y_train (n_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (zero))
-    - X_test (n_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 2 (zero+signal))
-    - Y_test (n_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols + 1 (zero))
+    - X_train (train_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (signal))
+    - Y_train (train_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols)
+    - X_test (test_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (signal))
+    - Y_test (test_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols)
     """
     def generate_one_sample(delay):
-        input_sequence = np.random.randint(1, n_symbols+1, size=sequence_length)  # 8 symboles possibles
-        signal = n_symbols + 1  # marqueur de début de reproduction
-        delay = np.zeros(delay)
-        zero_sequence = np.zeros(sequence_length)
-        
-        input_data = np.concatenate([input_sequence, delay, [signal], zero_sequence]).astype(int)
-        target_data = np.concatenate([zero_sequence, delay, [0], input_sequence]).astype(int)
-        input_onehot = np.eye(n_symbols+2)[input_data]
-        target_onehot = np.eye(n_symbols+1)[target_data]
+        # Generate a random sequence
+        sequence = np.random.randint(0, n_symbols, size=sequence_length)  # 8 symboles possibles
+        sequence_onehot = np.eye(n_symbols)[sequence]
 
-        return input_onehot, target_onehot
+        # Create the input & target
+        input_sequence = np.zeros((sequence_length + delay + 1 + sequence_length, n_symbols + 1))
+        input_sequence[:sequence_length, :n_symbols] = sequence_onehot
+        input_sequence[sequence_length + delay, n_symbols] = 1  # marker
+
+        target_sequence = np.zeros((sequence_length + delay + 1 + sequence_length, n_symbols))
+        target_sequence[sequence_length + delay + 1:, :] = sequence_onehot
+
+        return input_sequence, target_sequence
     
     # Generate the samples
     generate = lambda: generate_one_sample(delay)
@@ -132,7 +133,7 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     
     return X_train, Y_train, X_test, Y_test
 
-def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=2, n_symbols=8, training_ratio=0.8):
+def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n_markers=2, n_symbols=8, training_ratio=0.8):
     """
     [Multi sequence]
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
@@ -141,34 +142,31 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=
     Args:
     - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
-    - n_markers (int): nombre d'éléments à mémoriser
+    - n_markers (int): nombre d'éléments à mémoriser < sequence_length
     - n_symbols (int): nombre de symboles possibles
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return: 
-    - X_train (n_samples, sequence + 1 (endflag) + n_markers (zero), n_symbols + 3 (zero, pin and endflag))
-    - Y_train (n_samples, zero_sequence + 1 (endflag) + n_markers, n_symbols + 1 (zero))
-    - X_test (n_samples, sequence + 1 (endflag) + n_markers (zero), n_symbols + 3 (zero, pin and endflag))
-    - Y_test (n_samples, zero_sequence + 1 (endflag) + n_markers, n_symbols + 1 (zero))
+    - X_train (train_samples, sequence + delay + 1 (signal) + zero_markers, n_symbols + 2 (marker + signal))
+    - Y_train (train_samples, zero_sequence + delay + 1 (signal) + markers, n_symbols)
+    - X_test (test_samples, sequence + delay + 1 (signal) + zero_markers, n_symbols + 2 (marker + signal))
+    - Y_test (test_samples, zero_sequence + delay + 1 (signal) + markers, n_symbols)
     """
     def generate_one_sample():
-        # generate random onehot sequence
-        sequence = np.random.randint(1, n_symbols+1, size=sequence_length)
-        sequence_padded = np.concatenate([sequence, np.zeros(1 + n_markers)], axis=0)
-        sequence_onehot = np.eye(n_symbols+1)[sequence_padded]
-
-        # selection column
+        # generate random sequence
+        sequence = np.random.randint(0, n_symbols, size=sequence_length)
+        sequence_onehot = np.eye(n_symbols)[sequence]
         selected_indices = np.random.choice(sequence_length, n_markers, replace=False)
-        selection = np.zeros(sequence_length + 1 + n_markers).reshape(-1, 1)
-        selection[selected_indices, 0] = 1
+        selected_indices.sort()
 
-        # end flag column
-        endflag = np.zeros(sequence_length + 1 + n_markers).reshape(-1, 1)
-        endflag[sequence_length, 0] = 1
-        input = np.concatenate([sequence_padded, selection, endflag], axis=1)
+        # Create the input
+        input = np.zeros((sequence_length + delay + 1 + n_markers, n_symbols + 2))
+        input[:sequence_length, :n_symbols] = sequence_onehot # sequence
+        input[selected_indices, n_symbols] = 1 # markers
+        input[sequence_length + delay, n_symbols + 1] = 1
 
-        # Compute target
-        target = np.zeros((sequence_length + 1 + n_markers, n_symbols+1))
+        # Create the target
+        target = np.zeros((sequence_length + delay + 1 + n_markers, n_symbols))
         target[-n_markers:, :] = sequence_onehot[selected_indices, :]
 
         return input, target
@@ -178,6 +176,9 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, n_markers=
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate)
 
     return X_train, Y_train, X_test, Y_test
+
+
+
 
 
 # ------------ TEST DE MANIPULATION DE L'INFORMATION RETENUE ------------ #
@@ -270,6 +271,10 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
     return X_train, Y_train, X_test, Y_test
+
+
+
+
 
 # ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
@@ -432,6 +437,9 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, 
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
     return X_train, Y_train, X_test, Y_test
+
+
+
 
 
 # ------------ TEST DE TRAITEMENT DU SIGNAL ------------ #
