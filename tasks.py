@@ -453,12 +453,13 @@ def generate_sin_forecasting(sequence_length=1000, forecast_length=1, training_r
     Args:
     - sequence_length (int): longueur de la séquence
     - forecast_length (int): longueur de la prédiction
+    - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
 
     Return:
-    - X_train (1, sequence, 1)
-    - Y_train (1, sequence, 1)
-    - X_test (1, sequence, 1)
-    - Y_test (1, sequence, 1)
+    - X_train (1, training_sequence, 1)
+    - Y_train (1, training_sequence, 1)
+    - X_test (1, testing_sequence, 1)
+    - Y_test (1, testing_sequence, 1)
     """
     # Generate the signal
     length = sequence_length + forecast_length
@@ -494,9 +495,10 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, traini
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    -
-    - input (sequence, 3)
-    - target (sequence, 3)
+    - X_train (1, training_sequence, 3)
+    - Y_train (1, training_sequence, 3)
+    - X_test (1, testing_sequence, 3)
+    - Y_test (1, testing_sequence, 3)
     """
     # Define the Lorenz system
     def lorenz(x, y, z, s=10, r=28, b=2.667):
