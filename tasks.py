@@ -524,14 +524,14 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, traini
         zs[i + 1] = zs[i] + (dz * dt)
 
     # Create the input & target
-    input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length]))
-    target = np.column_stack((xs[forecast_length:], ys[forecast_length:], zs[forecast_length:]))
+    input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length])).reshape(1, -1, 3)
+    target = np.column_stack((xs[forecast_length:], ys[forecast_length:], zs[forecast_length:])).reshape(1, -1, 3)
 
     # Split the data into training and testing set
     training_size = int(sequence_length * training_ratio)
-    X_train = input[:training_size, :]
-    Y_train = target[:training_size, :]
-    X_test = input[training_size:, :]
-    Y_test = target[training_size:, :]
+    X_train = input[:, :training_size, :]
+    Y_train = target[:, :training_size, :]
+    X_test = input[:, training_size:, :]
+    Y_test = target[:, training_size:, :]
 
     return X_train, Y_train, X_test, Y_test    
