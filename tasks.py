@@ -274,15 +274,17 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
 
 # ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
-def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
+def generate_discrete_pattern_completion(n_samples=1000, sequence_length=100, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
-    [Unique sequence]
+    [Multi sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
     La sequence consiste à répéter un motif de longueur base_length et de dimension n_symbols + 1.
     Le premier symbole est un marqueur indiquant quand le modèle doit prédire le motif.
     Les autres symboles sont des éléments du motif.
 
     Args:
+    - n_samples (int): nombre d'échantillons
+    - sequence_length (int): longueur de la séquence
     - n_symbols (int): nombre de symboles possibles
     - base_length (int): longueur du motif
     - n_repetitions (int): nombre de répétitions du motif
@@ -290,74 +292,71 @@ def generate_discrete_pattern_completion(sequence_length=1000, n_symbols=8, base
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (1, training_sequence, n_symbols + marker)
-    - Y_train (1, training_sequence, n_symbols)
-    - X_test (1, testing_sequence, n_symbols + marker)
-    - Y_test (1, testing_sequence, n_symbols)
+    - X_train (training_samples, sequence, n_symbols + marker)
+    - Y_train (training_samples, sequence, n_symbols)
+    - X_test (testing_samples, sequence, n_symbols + marker)
+    - Y_test (testing_samples, sequence, n_symbols)
     """
-    # Génère un motif de base
-    base_pattern = np.random.randint(0, n_symbols, size=base_length)
-    n_repetitions = sequence_length // base_length + 1
-    sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
+    def generate_one_sample():
+        # Generate a base pattern
+        base_pattern = np.random.randint(0, n_symbols, size=base_length)
+        sequence = np.tile(base_pattern, sequence_length // base_length + 1)[:sequence_length]
 
-    # Masquer certaines parties pour que le modèle les prédise
-    nb_masked = int(sequence_length * mask_ratio)
-    mask = np.random.choice(sequence_length, nb_masked, replace=False)
-    masked_sequence = sequence.copy()
-    masked_sequence[mask] = n_symbols # Marker for masked values
+        # Mask some parts so that the model predicts them
+        nb_masked = int(sequence_length * mask_ratio)
+        mask = np.random.choice(sequence_length, nb_masked, replace=False)
+        masked_sequence = sequence.copy()
+        masked_sequence[mask] = n_symbols
 
-    # One-hot encoding
-    input = np.eye(n_symbols+1)[masked_sequence]
-    target = np.eye(n_symbols)[sequence]
+        # One-hot encoding
+        input = np.eye(n_symbols+1)[masked_sequence]
+        target = np.eye(n_symbols)[sequence]
 
-    # Split the data into training and testing set
-    training_size = int(sequence_length * training_ratio)
-    X_train = input[:training_size, :]
-    Y_train = target[:training_size, :]
-    X_test = input[training_size:, :]
-    Y_test = target[training_size:, :]
+        return input, target
+
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
     return X_train, Y_train, X_test, Y_test
 
-def generate_continuous_pattern_completion(sequence_length=1000, base_length=5, mask_ratio=0.2, training_ratio=0.8):
+def generate_continuous_pattern_completion(n_samples=1000, sequence_length=100, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
-    [Unique sequence]
+    [Multi sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
 
     Args:
+    - n_samples (int): nombre d'échantillons
+    - sequence_length (int): longueur de la séquence
     - base_length (int): longueur du motif
     - n_repetitions (int): nombre de répétitions du motif
     - mask_ratio (float): proportion de symboles masqués
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (1, training_sequence, 1)
-    - Y_train (1, training_sequence, 1)
-    - X_test (1, testing_sequence, 1)
-    - Y_test (1, testing_sequence, 1)
+    - X_train (training_samples, sequence, 1)
+    - Y_train (training_samples, sequence, 1)
+    - X_test (testing_samples, sequence, 1)
+    - Y_test (testing_samples, sequence, 1)
     """
-    # Génère un motif de base
-    base_pattern = np.random.uniform(0, 1, size=base_length)
-    n_repetitions = sequence_length // base_length + 1
-    sequence = np.tile(base_pattern, n_repetitions)[:sequence_length]
+    def generate_one_sample():
+        # Generate a base pattern
+        base_pattern = np.random.uniform(0, 1, size=base_length)
+        sequence = np.tile(base_pattern, sequence_length // base_length + 1)[:sequence_length]
 
-    # Masquer certaines parties pour que le modèle les prédise
-    nb_masked = int(sequence_length * mask_ratio)
-    mask = np.random.choice(sequence_length, nb_masked, replace=False)
-    masked_sequence = sequence.copy()
-    masked_sequence[mask] = -1
+        # Mask some parts so that the model predicts them
+        nb_masked = int(sequence_length * mask_ratio)
+        mask = np.random.choice(sequence_length, nb_masked, replace=False)
+        masked_sequence = sequence.copy()
+        masked_sequence[mask] = -1
 
-    # Split the data into training and testing set
-    input = masked_sequence.reshape(-1, 1)
-    target = sequence.reshape(-1, 1)
+        # One-hot encoding
+        input = masked_sequence.reshape(-1, 1)
+        target = sequence.reshape(-1, 1)
 
-    # Split the data into training and testing set
-    training_size = int(sequence_length * training_ratio)
-    testing_size = sequence_length - training_size
-    X_train = input[:training_size, :].reshape(1, training_size, 1)
-    Y_train = target[:training_size, :].reshape(1, training_size, 1)
-    X_test = input[training_size:, :].reshape(1, testing_size, 1)
-    Y_test = target[training_size:, :].reshape(1, testing_size, 1)
+        return input, target
+
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
     return X_train, Y_train, X_test, Y_test
 
