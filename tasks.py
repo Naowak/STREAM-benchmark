@@ -186,10 +186,7 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
 def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, training_ratio=0.8):
     """
     [Multi sequence]
-    Version classique : deux séquences parallèles
-    - Une séquence de nombres aléatoires
-    - Une séquence de marqueurs (deux 1, le reste 0)
-    Le modèle doit additionner les nombres aux positions marquées
+    Le modèle doit lire une séquence de nombre aléatoire, puis additionner les nombres aux positions marquées.
 
     Args:
     - n_samples (int): nombre d'échantillons
@@ -198,29 +195,26 @@ def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, t
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - input (n_samples, sequence + endflag + zero (1), max_number + marker + endflag)
-    - target (n_samples, zero_sequence + endflag + target, max_number * 2 + 1)
+    - X_train (train_samples, sequence + trigger + 1, max_number + marker + trigger)
+    - Y_train (train_samples, sequence + trigger + 1, 2*max_number - 1)
+    - X_test (test_samples, sequence + trigger + 1, max_number + marker + trigger)
+    - Y_test (test_samples, sequence + trigger + 1, 2*max_number - 1)
     """
     def generate_one_sample():
-        # Génère une séquence de nombres aléatoires
-        sequence = np.random.randint(0, max_number+1, sequence_length)
-        sequence_onehot = np.eye(max_number+1)[sequence]
-        sequence_padded = np.concatenate([sequence_onehot, np.zeros((2, max_number+1))], axis=0)
-
-        # Place deux marqueurs aléatoirement
+        # Génère la sequence
+        sequence = np.random.randint(0, max_number, sequence_length)
         selected_indices = np.random.choice(sequence_length, 2, replace=False)
-        selection = np.zeros(sequence_length + 2).reshape(-1, 1)
-        selection[selected_indices] = 1
+        result = (sequence[selected_indices] + 1).sum()
 
-        # End flag column
-        endflag = np.zeros(sequence_length + 2).reshape(-1, 1)
-        endflag[sequence_length, 0] = 1
-        input = np.concatenate([sequence_padded, selection, endflag], axis=1)
+        # Create input
+        input = np.zeros((sequence_length+2, max_number+2))
+        input[:sequence_length, :max_number] = np.eye(max_number)[sequence] # One-hot encoding
+        input[selected_indices, max_number] = 1 # Markers
+        input[sequence_length, max_number+1] = 1 # Trigger
 
-        # Calcule la somme des nombres aux positions marquées
-        result = sequence[selected_indices].sum()
-        target = np.zeros((sequence_length + 2, max_number * 2 + 1))
-        target[-1, result] = 1
+        # Create target
+        target = np.zeros((sequence_length+2, max_number*2-1))
+        target[-1, result-2] = 1
 
         return input, target
     
@@ -242,8 +236,10 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - input (n_samples, sequence + 1 + zero_seq, n_symbols + 1 + order (sequence_length))
-    - target (n_samples, zero_seq + 1 + sequence, n_symbols)
+    - X_train (train_samples, sequence + trigger + zero_seq, n_symbols + order (sequence_length) + trigger)
+    - Y_train (train_samples, zero_seq + trigger + sequence, n_symbols)
+    - X_test (test_samples, sequence + trigger + zero_seq, n_symbols + order (sequence_length) + trigger)
+    - Y_test (test_samples, zero_seq + trigger + sequence, n_symbols)
     """
     def generate_one_sample():
         # Create a sequence of symbols & a random order
