@@ -17,6 +17,8 @@ class Task:
     is_classification: bool
     generator_params: Dict[str, Any] = None
     model_params: Dict[str, Any] = None
+    training_params: Dict[str, Any] = None
+    n_trials: int = 1
 
 @dataclass
 class TaskResult:
@@ -50,74 +52,102 @@ class BenchmarkSuite:
         )
         self.logger = logging.getLogger(__name__)
         
+
     def add_task(self, task: Task):
         """Ajoute une tâche au benchmark."""
         self.tasks[task.name] = task
         self.logger.info(f"Added task: {task.name}")
 
-    def evaluate_model(self):
+
+    def run(self):
         """Évalue un modèle sur toutes les tâches enregistrées."""
         self.logger.info(f"Starting evaluation of model: {self.model_name}")
         
         # Pour chaque tâche
-        for task_name, task in self.tasks.items():
-            self.logger.info(f"Evaluating task: {task_name}")
+        for task in self.tasks.values():
+            self.logger.info(f"Evaluating task: {task.name}")
             
             # Génération des données
             try:
+                np.random.seed(self.seed) # Reset seed 
                 X_train, Y_train, X_test, Y_test = task.generator(**(task.generator_params or {}))
             except Exception as e:
-                self.logger.error(f"\033[91mError generating dataset for task {task_name}: {e}\033[0m")
+                self.logger.error(f"\033[91mError generating dataset for task {task.name}: {e}\033[0m")
                 continue
-                
-            # Initialisation des mesures de performance
-            start_memory = psutil.Process().memory_info().rss
-            start_time = time.time()
-            
-            # Entraînement
-            try:
-                np.random.seed(self.seed) # Reset seed before creating model
-                model = self.model_class(**(task.model_params or {}))
-                model.train(X_train, Y_train)
-            except Exception as e:
-                self.logger.error(f"\033[91mError training model on task {task_name}: {e}\033[0m")
-                continue
-            
-            # Mesure du temps et de la mémoire pour l'entrainement
-            training_time = time.time() - start_time
-            memory_used = (psutil.Process().memory_info().rss - start_memory) / 1024 / 1024  # MB
-            
-            # Prédiction des données de test
-            start_time = time.time()
-            try:
-                predictions = model.run(X_test)
-            except Exception as e:
-                self.logger.error(f"\033[91mError during inference on task {task_name}: {e}\033[0m")
-                continue
-            inference_time = time.time() - start_time
-            
-            # Evaluation des prédictions
-            metrics = self._evaluate_predictions(Y_test, predictions, task.is_classification)
-            
-            # Enregistrement des résultats
-            result = TaskResult(
-                task_name=task_name,
-                accuracy=metrics['accuracy'],
-                mse=metrics['mse'],
-                precision=metrics['precision'],
-                recall=metrics['recall'],
-                training_time=training_time,
-                inference_time=inference_time,
-                memory_usage=memory_used,
-                training_iterations=getattr(model, 'n_iterations', 0),
-                sequence_length=X_train.shape[1],
-                feature_dim=X_train.shape[2]
-            )
-            
-            self.results[self.model_name].append(result)
-            self.logger.info(f"Completed evaluation for task: {task_name}")
-            
-        return self.results[self.model_name]
+
+            # Entraînement et évaluation du modèle pour un ensemble d'hyperparamètres aléatoires
+            for i in range(task.n_trials):
+
+                # Randomly select model hyperparameters
+                model_hp = self._select_random_hyperparameters(task)
+                print(model_hp)
+
+                # Evaluate model with hyperparameters
+                self._evaluate_model_with_hp(X_train, Y_train, X_test, Y_test, task, model_hp)
+
+
+
+    def _select_random_hyperparameters(self, task: Task) -> Dict[str, Any]:
+        """Sélectionne aléatoirement des hyperparamètres pour un modèle."""
+        model_hp = {}
+        for hp_name, hp_values in task.model_params.items():
+            if type(hp_values) in [int, float]: # Unique value, no choice
+                model_hp[hp_name] = hp_values
+            elif type(hp_values) == list and len(hp_values) == 2: # Range of values
+                model_hp[hp_name] = np.random.choice(list(range(hp_values[0], hp_values[1]+1)))
+            else: # Error
+                raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
+        return model_hp
+
+    def _evaluate_model_with_hp(self, X_train, Y_train, X_test, Y_test, task, model_hp):
+        """Pour chaque tâche du benchmark, évalue un modèle en effectuant une recherche d'hyperparamètres."""
+
+        # Retrieve task & Initialisation des mesures de performance
+        start_memory = psutil.Process().memory_info().rss
+        start_time = time.time()
+        
+        # Entraînement
+        try:
+            model = self.model_class(**model_hp)
+            model.train(X_train, Y_train)
+        except Exception as e:
+            self.logger.error(f"\033[91mError training model on task {task.name}: {e}\033[0m")
+            return
+        
+        # Mesure du temps et de la mémoire pour l'entrainement
+        training_time = time.time() - start_time
+        memory_used = (psutil.Process().memory_info().rss - start_memory) / 1024 / 1024  # MB
+        
+        # Prédiction des données de test
+        start_time = time.time()
+        try:
+            predictions = model.run(X_test)
+        except Exception as e:
+            self.logger.error(f"\033[91mError during inference on task {task.name}: {e}\033[0m")
+            return
+        inference_time = time.time() - start_time
+        
+        # Evaluation des prédictions
+        metrics = self._evaluate_predictions(Y_test, predictions, task.is_classification)
+        
+        # Enregistrement des résultats
+        result = TaskResult(
+            task_name=task.name,
+            accuracy=metrics['accuracy'],
+            mse=metrics['mse'],
+            precision=metrics['precision'],
+            recall=metrics['recall'],
+            training_time=training_time,
+            inference_time=inference_time,
+            memory_usage=memory_used,
+            training_iterations=getattr(model, 'n_iterations', 0),
+            sequence_length=X_train.shape[1],
+            feature_dim=X_train.shape[2]
+        )
+        
+        self.results[self.model_name].append(result)
+        self.logger.info(f"Completed evaluation for task: {task.name}")
+
 
 
     def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, is_classification: bool) -> Dict[str, float]:
