@@ -1,2 +1,3 @@
 # STREAM-benchmark
-Sequential Tasks for Reservoir-Enhanced Attention Models
+
+Sequential Task Review for Evaluating Artificial Memory

@@ -97,7 +97,7 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     """
     [Multi sequence]
     Génère une tâche de copie : le modèle doit lire l'ensemble d'une séquence, 
-    la mémoriser et la reproduire après un délai, lorsqu'un signal l'averti.
+    la mémoriser et la reproduire après un délai, lorsqu'un trigger l'averti.
 
     Args:
     - n_samples (int): nombre d'échantillons
@@ -107,9 +107,9 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return:
-    - X_train (train_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (signal))
+    - X_train (train_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (trigger))
     - Y_train (train_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols)
-    - X_test (test_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (signal))
+    - X_test (test_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (trigger))
     - Y_test (test_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols)
     """
     def generate_one_sample(delay):
@@ -137,20 +137,21 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
     """
     [Multi sequence]
     Le modèle doit lire l'ensemble d'une séquence, mémoriser les éléments marqués,
-    et reproduire uniquement les éléments marqués dans la séquence, lorsqu'un signal l'averti.
+    et reproduire uniquement les éléments marqués dans la séquence, une fois le signal trigger reçu.
 
     Args:
     - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
+    - delay (int): délai avant de reproduire la séquence
     - n_markers (int): nombre d'éléments à mémoriser < sequence_length
     - n_symbols (int): nombre de symboles possibles
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
     Return: 
-    - X_train (train_samples, sequence + delay + 1 (signal) + zero_markers, n_symbols + 2 (marker + signal))
-    - Y_train (train_samples, zero_sequence + delay + 1 (signal) + markers, n_symbols)
-    - X_test (test_samples, sequence + delay + 1 (signal) + zero_markers, n_symbols + 2 (marker + signal))
-    - Y_test (test_samples, zero_sequence + delay + 1 (signal) + markers, n_symbols)
+    - X_train (train_samples, sequence + delay + 1 (trigger) + zero_markers, n_symbols + 2 (marker + trigger))
+    - Y_train (train_samples, zero_sequence + delay + 1 (trigger) + markers, n_symbols)
+    - X_test (test_samples, sequence + delay + 1 (trigger) + zero_markers, n_symbols + 2 (marker + trigger))
+    - Y_test (test_samples, zero_sequence + delay + 1 (trigger) + markers, n_symbols)
     """
     def generate_one_sample():
         # generate random sequence
@@ -186,7 +187,8 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
 def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, training_ratio=0.8):
     """
     [Multi sequence]
-    Le modèle doit lire une séquence de nombre aléatoire, puis additionner les nombres aux positions marquées.
+    Le modèle doit lire une séquence de nombre aléatoire, 
+    puis additionner les nombres aux positions marquées une fois avoir reçu le signal trigger.
 
     Args:
     - n_samples (int): nombre d'échantillons
@@ -226,8 +228,8 @@ def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, t
 def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, training_ratio=0.8):
     """
     [Multi sequence]
-    Génère une séquence de symbols désordonné associé à un ordre. 
-    Le modèle doit réordonner la séquence en fonction de l'ordre.
+    Génère une séquence de symbols (one-hot) de manière aléatoire, chacun étant associé à une position (one-hot). 
+    Le modèle doit trier la séquence en fonction des positions, une fois le signal trigger reçu.
 
     Args:
     - n_samples (int): nombre d'échantillons
@@ -287,7 +289,6 @@ def generate_discrete_pattern_completion(n_samples=1000, sequence_length=100, n_
     - sequence_length (int): longueur de la séquence
     - n_symbols (int): nombre de symboles possibles
     - base_length (int): longueur du motif
-    - n_repetitions (int): nombre de répétitions du motif
     - mask_ratio (float): proportion de masquer un symbole
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
@@ -323,12 +324,13 @@ def generate_continuous_pattern_completion(n_samples=1000, sequence_length=100, 
     """
     [Multi sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
+    La sequence consiste à répéter un motif de longueur base_length et de dimension 1.
+    Certaines valeurs de la séquence sont masquées par la valeur -1 et le modèle doit les prédire.
 
     Args:
     - n_samples (int): nombre d'échantillons
     - sequence_length (int): longueur de la séquence
     - base_length (int): longueur du motif
-    - n_repetitions (int): nombre de répétitions du motif
     - mask_ratio (float): proportion de symboles masqués
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
 
