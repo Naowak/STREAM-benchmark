@@ -33,13 +33,13 @@ class TaskResult:
     feature_dim: int
 
 class BenchmarkSuite:
-    def __init__(self, model_class: Any, seed: int = 42):
+    def __init__(self, model_class: Any, model_name: str, seed: int = 42):
         # Set seed
         self.seed = seed
-        np.random.seed(seed)
 
         # Initialize model_class, tasks and results
         self.model_class = model_class
+        self.model_name = model_name
         self.tasks = {}
         self.results = defaultdict(list)
 
@@ -55,9 +55,9 @@ class BenchmarkSuite:
         self.tasks[task.name] = task
         self.logger.info(f"Added task: {task.name}")
 
-    def evaluate_model(self, model_name: str):
+    def evaluate_model(self):
         """Évalue un modèle sur toutes les tâches enregistrées."""
-        self.logger.info(f"Starting evaluation of model: {model_name}")
+        self.logger.info(f"Starting evaluation of model: {self.model_name}")
         
         # Pour chaque tâche
         for task_name, task in self.tasks.items():
@@ -65,9 +65,9 @@ class BenchmarkSuite:
             
             # Génération des données
             try:
-                (X_train, Y_train), (X_test, Y_test) = self._generate_task(task)
+                X_train, Y_train, X_test, Y_test = task.generator(**(task.generator_params or {}))
             except Exception as e:
-                self.logger.error(f"Error generating dataset for task {task_name}: {e}")
+                self.logger.error(f"\033[91mError generating dataset for task {task_name}: {e}\033[0m")
                 continue
                 
             # Initialisation des mesures de performance
@@ -76,10 +76,11 @@ class BenchmarkSuite:
             
             # Entraînement
             try:
+                np.random.seed(self.seed) # Reset seed before creating model
                 model = self.model_class(**(task.model_params or {}))
                 model.train(X_train, Y_train)
             except Exception as e:
-                self.logger.error(f"Error training model on task {task_name}: {e}")
+                self.logger.error(f"\033[91mError training model on task {task_name}: {e}\033[0m")
                 continue
             
             # Mesure du temps et de la mémoire pour l'entrainement
@@ -91,7 +92,7 @@ class BenchmarkSuite:
             try:
                 predictions = model.run(X_test)
             except Exception as e:
-                self.logger.error(f"Error during inference on task {task_name}: {e}")
+                self.logger.error(f"\033[91mError during inference on task {task_name}: {e}\033[0m")
                 continue
             inference_time = time.time() - start_time
             
@@ -113,17 +114,11 @@ class BenchmarkSuite:
                 feature_dim=X_train.shape[2]
             )
             
-            self.results[model_name].append(result)
+            self.results[self.model_name].append(result)
             self.logger.info(f"Completed evaluation for task: {task_name}")
             
-        return self.results[model_name]
+        return self.results[self.model_name]
 
-
-    def _generate_task(self, task: Task) -> Tuple[np.ndarray, np.ndarray]:
-        """Génère (X_train, Y_train, X_test, Y_test) associé à la tâche"""
-        X, Y = task.generator(**(task.generator_params or {}))
-        train_size = int(0.8 * len(X))
-        return (X[:train_size], Y[:train_size]), (X[train_size:], Y[train_size:])
 
     def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, is_classification: bool) -> Dict[str, float]:
         """Évalue les prédictions selon le type de tâche"""
