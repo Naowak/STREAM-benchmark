@@ -1,4 +1,5 @@
 import numpy as np
+from datasets import load_dataset
 
 
 # ------------ USEFULL FUNCTIONS ------------ #
@@ -270,7 +271,49 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
 
     return X_train, Y_train, X_test, Y_test
 
+def generate_mnist_classification(n_samples=1000, training_ratio=0.8):
+    """
+    [Multi sequence]
+    Génère une tâche de classification d'images MNIST : le modèle doit lire une image colonne par colonne,
+    la mémoriser et la classifier après un trigger.
 
+    Args:
+    - n_samples (int): nombre d'échantillons
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
+
+    Return:
+    - X_train (train_samples, 28 + trigger + 1, 28 + trigger)
+    - Y_train (train_samples, 28 + trigger + 1, 10)
+    - X_test (test_samples, 28 + trigger + 1, 28 + trigger)
+    - Y_test (test_samples, 28 + trigger + 1, 10)
+    """
+    # Load MNIST data
+    dataset = load_dataset("mnist")
+    X = np.concat([np.array(dataset['train']['image']), np.array(dataset['test']['image'])]).transpose(0, 2, 1) # so we can read it column by column
+    Y = np.concat([np.array(dataset['train']['label']), np.array(dataset['test']['label'])])
+    
+    # Shuffle and select the samples
+    shuffle = np.random.permutation(X.shape[0])[:n_samples]
+    X = X[shuffle]
+    Y = Y[shuffle]
+
+    # Create inputs
+    inputs = np.zeros((X.shape[0], X.shape[1]+2, X.shape[2]+1))
+    inputs[:, -2, -1] = 1 # trigger
+    inputs[:, :-2, :-1] = X
+
+    # Create targets
+    targets = np.zeros((X.shape[0], X.shape[1]+2, 10))
+    targets[:, -1, :] = np.eye(10)[Y]
+
+    # Split the data into training and testing set
+    training_size = int(n_samples * training_ratio)
+    X_train = inputs[:training_size]
+    Y_train = targets[:training_size]
+    X_test = inputs[training_size:]
+    Y_test = targets[training_size:]
+
+    return X_train, Y_train, X_test, Y_test
 
 
 
