@@ -110,7 +110,7 @@ class BenchmarkSuite:
             # Logs & Progress bar
             self.logger.info(f"Evaluating task: {task.name}")
             progress_bar = tqdm(total=task.n_trials * len(self.seeds), position=0, leave=True)
-            progress_bar.set_description(f"Task: {task.name}, Seed: 0/{len(self.seeds)}, Trials: 0/{task.n_trials}")
+            progress_bar.set_description(f"Task: {task.name}, Seed: 0/{len(self.seeds)}, Trial: 0/{task.n_trials}")
 
             # Pour chaque seed
             for s, seed in enumerate(self.seeds):
@@ -134,7 +134,7 @@ class BenchmarkSuite:
 
                     # Update progress bar
                     progress_bar.update(1)
-                    progress_bar.set_description(f"Task: {task.name}, Seed: {s+1}/{len(self.seeds)}, Trials: {i+1}/{task.n_trials}")
+                    progress_bar.set_description(f"Task: {task.name}, Seed: {s+1}/{len(self.seeds)}, Trial: {i+1}/{task.n_trials}")
 
             # Logs
             progress_bar.close()
@@ -322,14 +322,16 @@ class BenchmarkSuite:
             plt.figure(figsize=(12, 6))
             if not np.isnan(task_df['Accuracy'].iloc[0]):
                 # Classification
-                sns.scatterplot(data=task_df, x='Precision', y='Recall', hue='Model')
+                sns.scatterplot(data=task_df, x='Accuracy', y='Training Time (s)', hue='Accuracy')
                 #task_df.boxplot(column=['Accuracy', 'Precision', 'Recall'], by='Model')
-                plt.title(f'Classification Metrics by Model for Task: {task_name}')
-            else:
+                plt.title(f'Accuracy in function of Training Time for Task: {task_name}')
+            elif not np.isnan(task_df['MSE'].iloc[0]):
                 # Regression
-                sns.scatterplot(data=task_df, x='MSE', y='Training Time (s)', hue='Model')
+                sns.scatterplot(data=task_df, x='MSE', y='Training Time (s)', hue='MSE')
                 #task_df.boxplot(column='MSE', by='Model')
-                plt.title(f'MSE by Model for Task: {task_name}')
+                plt.title(f'MSE in function of Training Time for Task: {task_name}')
+            else:
+                raise ValueError('Invalid task type')
             
             # Save plot
             plt.xticks(rotation=45)
