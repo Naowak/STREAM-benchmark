@@ -145,6 +145,20 @@ class RAU:
         activity = self._compute_activity(X) # (sample, time, units)
         preds = self.readout.predict(activity.reshape(-1, self.units)) # (sample * time, output_dim)
         return preds.reshape(X.shape[0], X.shape[1], self.output_dim) # (sample, time, output_dim)
+    
+    def count_params(self):
+        """
+        Compte le nombre de paramètres du réseau de neurones récurrents.
+
+        Retourne :
+        int : Le nombre de paramètres.
+        """
+        win_params = self.units * self.input_dim
+        w_params = self.units * self.units
+        bias_params = self.units
+        readout_params = self.units * self.output_dim
+        
+        return win_params + w_params + bias_params + readout_params
 
 
 

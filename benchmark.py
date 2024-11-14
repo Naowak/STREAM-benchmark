@@ -18,8 +18,8 @@ class Task:
     generator: Callable
     is_classification: bool
     generator_params: Dict[str, Any] = None
-    model_params: Dict[str, Any] = None
-    training_params: Dict[str, Any] = None
+    model_args: Dict[str, Any] = None
+    training_args: Dict[str, Any] = None
     n_trials: int = 1
 
 @dataclass
@@ -33,48 +33,42 @@ class TaskResult:
     training_time: float
     inference_time: float
     memory_usage: float
-    task_params: Dict[str, Any]
-    model_params: Dict[str, Any]
-    training_params: Dict[str, Any]
+    task_args: Dict[str, Any]
+    model_args: Dict[str, Any]
+    training_args: Dict[str, Any]
+    number_params: int
     # parameters: int
+
+    
+report_template = """
+- Training Time: {:.4f} seconds
+- Inference Time: {:.4f} seconds
+- Memory Usage: {:.4f} MB
+- Number Params: {}
+
+#### Task Parameters
+{}
+
+#### Model Parameters
+{}
+
+#### Training Parameters
+{}
+
+#### Performance Plot
+![Performance Plot](./{}_performance.png)
+
+"""
 
 classification_task_template = """
 #### Results
 - Accuracy: {:.4f}
 - Precision: {:.4f}
-- Recall: {:.4f}
-- Training Time: {:.4f} seconds
-- Inference Time: {:.4f} seconds
-- Memory Usage: {:.4f} MB
-
-#### Task Parameters
-{}
-
-#### Model Parameters
-{}
-
-#### Training Parameters
-{}
-
-"""
+- Recall: {:.4f}""" + report_template
 
 regression_task_template = """
 #### Results
-- MSE: {:.4f}
-- Training Time: {:.4f} seconds
-- Inference Time: {:.4f} seconds
-- Memory Usage: {:.4f} MB
-
-#### Task Parameters
-{}
-
-#### Model Parameters
-{}
-
-#### Training Parameters
-{}
-
-"""
+- MSE: {:.4f}""" + report_template
 
 class BenchmarkSuite:
     def __init__(self, model_class: Any, model_name: str, seeds: list[int] = [42, 43, 44]):
@@ -144,7 +138,7 @@ class BenchmarkSuite:
     def _select_random_hyperparameters(self, task: Task) -> Dict[str, Any]:
         """Sélectionne aléatoirement des hyperparamètres pour un modèle."""
         model_hp = {}
-        for hp_name, hp_values in task.model_params.items():
+        for hp_name, hp_values in task.model_args.items():
             if type(hp_values) in [int, float]: # Unique value, no choice
                 model_hp[hp_name] = hp_values
             elif type(hp_values) == list and len(hp_values) == 2: # Range of values
@@ -195,9 +189,10 @@ class BenchmarkSuite:
             training_time=training_time,
             inference_time=inference_time,
             memory_usage=memory_used,
-            task_params=task.generator_params,
-            model_params=model_hp,
-            training_params=task.training_params,
+            task_args=task.generator_params,
+            model_args=model_hp,
+            training_args=task.training_args,
+            number_params=model.count_params() if 'count_params' in dir(model) else None 
         )
         self.results[task.name].append(result)
 
@@ -245,11 +240,12 @@ class BenchmarkSuite:
                     'Training Time (s)': result.training_time,
                     'Inference Time (s)': result.inference_time,
                     'Memory Usage (MB)': result.memory_usage,
-                    'Task Params': result.task_params,
-                    'Model Params': result.model_params,
-                    'Training Params': result.training_params,
+                    'Task Args': result.task_args,
+                    'Model Args': result.model_args,
+                    'Training Args': result.training_args,
+                    'Number Params': result.number_params
                 })
-        
+    
         df = pd.DataFrame(results_data)
         
         # Sauvegarde des résultats bruts
@@ -260,13 +256,13 @@ class BenchmarkSuite:
         
         # Génération du rapport markdown
         with open(f'{output_path}/report.md', 'w') as f:
-            f.write('# Benchmark Results\n\n')
+            f.write(f'# Benchmark Results for model {self.model_name}\n\n')
             
             # Résumé global
             f.write('## Global Performance Summary\n\n')
 
             # Extrait le meilleur essai pour chaque tâches
-            dfnp = df.drop(['Task Params', 'Model Params', 'Training Params'], axis=1)
+            dfnp = df.drop(['Task Args', 'Model Args', 'Training Args'], axis=1)
             groups = dfnp.groupby(['Task', 'Model'])
             best_idx_acc = groups['Accuracy'].idxmax()
             best_idx_mse = groups['MSE'].idxmin()
@@ -291,9 +287,11 @@ class BenchmarkSuite:
                         task_df['Training Time (s)'], 
                         task_df['Inference Time (s)'], 
                         task_df['Memory Usage (MB)'], 
-                        task_df['Task Params'], 
-                        task_df['Model Params'], 
-                        task_df['Training Params']
+                        task_df['Number Params'],
+                        task_df['Task Args'], 
+                        task_df['Model Args'], 
+                        task_df['Training Args'],
+                        task_name,
                     ))
                 
                 # Régression task
@@ -303,9 +301,11 @@ class BenchmarkSuite:
                         task_df['Training Time (s)'],
                         task_df['Inference Time (s)'],
                         task_df['Memory Usage (MB)'], 
-                        task_df['Task Params'], 
-                        task_df['Model Params'], 
-                        task_df['Training Params']
+                        task_df['Number Params'],
+                        task_df['Task Args'], 
+                        task_df['Model Args'], 
+                        task_df['Training Args'],
+                        task_name,
                     ))
                 else:
                     raise ValueError('Invalid task type')
@@ -315,45 +315,33 @@ class BenchmarkSuite:
 
         # Pour chaque tâche
         for task_name in df['Task'].unique():
+            # Filter task
             task_df = df[df['Task'] == task_name]
-            #task_df = task_df.drop(['Task', 'Task Params', 'Model Params', 'Training Params'], axis=1)
             
             # Performance plot
-            plt.figure(figsize=(12, 6))
+            fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+            fig.suptitle(f'Performance for Task: {task_name}', fontsize=16)
             if not np.isnan(task_df['Accuracy'].iloc[0]):
                 # Classification
-                sns.scatterplot(data=task_df, x='Accuracy', y='Training Time (s)', hue='Accuracy')
-                #task_df.boxplot(column=['Accuracy', 'Precision', 'Recall'], by='Model')
-                plt.title(f'Accuracy in function of Training Time for Task: {task_name}')
+                sns.scatterplot(data=task_df, x='Training Time (s)', y='Accuracy', hue='Accuracy', ax=axes[0])
+                axes[0].set_title('Training Time vs Accuracy')
+                sns.scatterplot(data=task_df, x='Memory Usage (MB)', y='Accuracy', hue='Accuracy', ax=axes[1])
+                axes[1].set_title('Memory Usage vs Accuracy')
+                sns.scatterplot(data=task_df, x='Number Params', y='Accuracy', hue='Accuracy', ax=axes[2])
+                axes[2].set_title('Number Parameters vs Accuracy')
             elif not np.isnan(task_df['MSE'].iloc[0]):
                 # Regression
-                sns.scatterplot(data=task_df, x='MSE', y='Training Time (s)', hue='MSE')
-                #task_df.boxplot(column='MSE', by='Model')
-                plt.title(f'MSE in function of Training Time for Task: {task_name}')
+                sns.scatterplot(data=task_df, x='Training Time (s)', y='MSE', hue='MSE', ax=axes[0])
+                axes[0].set_title('Training Time vs MSE')
+                sns.scatterplot(data=task_df, x='Memory Usage (MB)', y='MSE', hue='MSE', ax=axes[1])
+                axes[1].set_title('Memory Usage vs MSE')
+                sns.scatterplot(data=task_df, x='Number Params', y='MSE', hue='MSE', ax=axes[2])
+                axes[2].set_title('Number Parameters vs MSE')
             else:
                 raise ValueError('Invalid task type')
             
             # Save plot
             plt.xticks(rotation=45)
-            plt.tight_layout()
+            plt.tight_layout(rect=[0, 0, 0.5, 0])  # Adjust layout to make room for the title
             plt.savefig(f'{output_path}/{task_name}_performance.png')
-
-        # Performance plot
-        # plt.figure(figsize=(12, 6))
-        # for metric in ['Accuracy', 'MSE']:
-        #     if df[metric].sum() > 0:  # Only plot if metric is used
-        #         plt.subplot(1, 2, 1 if metric == 'Accuracy' else 2)
-        #         df.boxplot(column=metric, by='Model')
-        #         plt.title(f'{metric} by Model')
-        #         plt.xticks(rotation=45)
-        # plt.tight_layout()
-        # plt.savefig(f'{output_path}/performance.png')
-        
-        # # Time and Memory plot
-        # plt.figure(figsize=(12, 6))
-        # df.boxplot(column=['Training Time (s)', 'Memory Usage (MB)'], by='Model')
-        # plt.title('Computational Resources by Model')
-        # plt.xticks(rotation=45)
-        # plt.tight_layout()
-        # plt.savefig(f'{output_path}/resources.png')
 
