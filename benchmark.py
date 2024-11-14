@@ -2,6 +2,7 @@ from typing import Dict, Any, Callable, List, Tuple, Optional
 from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
 from dataclasses import dataclass
 from collections import defaultdict
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -105,13 +106,14 @@ class BenchmarkSuite:
         
         # Pour chaque tâche
         for task in self.tasks.values():
+            # Logs & Progress bar
             self.logger.info(f"Evaluating task: {task.name}")
+            progress_bar = tqdm(total=task.n_trials * len(self.seeds), position=0, leave=True)
+            progress_bar.set_description(f"Task: {task.name}, Seed: 0/{len(self.seeds)}, Trials: 0/{task.n_trials}")
 
             # Pour chaque seed
-            for seed in self.seeds:
-
+            for s, seed in enumerate(self.seeds):
                 # Set seed 
-                self.logger.info(f"Seed: {seed}")
                 np.random.seed(seed) 
             
                 # Génération des données
@@ -123,14 +125,18 @@ class BenchmarkSuite:
 
                 # Pour chaque essai
                 for i in range(task.n_trials):
-                    self.logger.info(f"Trial {i+1}/{task.n_trials}")
-
                     # Randomly select model hyperparameters
                     model_hp = self._select_random_hyperparameters(task)
 
                     # Evaluate model with hyperparameters
                     self._evaluate_model_with_hp(X_train, Y_train, X_test, Y_test, task, model_hp)
 
+                    # Update progress bar
+                    progress_bar.update(1)
+                    progress_bar.set_description(f"Task: {task.name}, Seed: {s+1}/{len(self.seeds)}, Trials: {i+1}/{task.n_trials}")
+
+            # Logs
+            progress_bar.close()
             self.logger.info(f"Completed evaluation for task: {task.name}")
 
 

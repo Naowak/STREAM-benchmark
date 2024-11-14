@@ -4,3 +4,4 @@ numpy
 tabulate
 ipykernel
 matplotlib
+tqdm
