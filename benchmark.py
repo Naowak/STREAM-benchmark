@@ -71,7 +71,7 @@ regression_task_template = """
 - MSE: {:.4f}""" + report_template
 
 class BenchmarkSuite:
-    def __init__(self, model_class: Any, model_name: str, seeds: list[int] = [42, 43, 44]):
+    def __init__(self, model_class: Any, model_name: str, seeds: list[int] = [42, 43, 44, 45]):
         # Set seed
         self.seeds = seeds
 
@@ -143,7 +143,12 @@ class BenchmarkSuite:
             if type(hp_values) in [int, float]: # Unique value, no choice
                 model_hp[hp_name] = hp_values
             elif type(hp_values) == list and len(hp_values) == 2: # Range of values
-                model_hp[hp_name] = int(np.random.choice(list(range(hp_values[0], hp_values[1]+1))))
+                if type(hp_values[0]) == float:
+                    model_hp[hp_name] = np.random.uniform(hp_values[0], hp_values[1])
+                elif type(hp_values[0]) == int:
+                    model_hp[hp_name] = int(np.random.choice(list(range(hp_values[0], hp_values[1]+1))))
+                else:
+                    raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
             else: # Error
                 raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
         return model_hp

@@ -315,11 +315,13 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8):
 
     return X_train, Y_train, X_test, Y_test
 
+#def generate_adding_mnist(n_samples=1000, training_ratio=0.8):
+#    pass
 
 
 # ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
 
-def generate_discrete_pattern_completion(n_samples=1000, sequence_length=100, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
+def generate_discrete_pattern_completion(n_samples=1000, sequence_length=1000, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
     [Multi sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
