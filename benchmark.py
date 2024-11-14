@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import seaborn as sns
 import pandas as pd
 import numpy as np
 import time
@@ -39,12 +40,12 @@ class TaskResult:
 
 classification_task_template = """
 #### Results
-- Accuracy: {}
-- Precision: {}
-- Recall: {}
-- Training Time: {}
-- Inference Time: {}
-- Memory Usage: {}
+- Accuracy: {:.4f}
+- Precision: {:.4f}
+- Recall: {:.4f}
+- Training Time: {:.4f} seconds
+- Inference Time: {:.4f} seconds
+- Memory Usage: {:.4f} MB
 
 #### Task Parameters
 {}
@@ -59,10 +60,10 @@ classification_task_template = """
 
 regression_task_template = """
 #### Results
-- MSE: {}
-- Training Time: {}
-- Inference Time: {}
-- Memory Usage: {}
+- MSE: {:.4f}
+- Training Time: {:.4f} seconds
+- Inference Time: {:.4f} seconds
+- Memory Usage: {:.4f} MB
 
 #### Task Parameters
 {}
@@ -255,7 +256,7 @@ class BenchmarkSuite:
         df.to_csv(f'{output_path}/results.csv', index=False)
         
         # Génération des graphiques
-        #self._generate_plots(df, output_path)
+        self._generate_plots(df, output_path)
         
         # Génération du rapport markdown
         with open(f'{output_path}/report.md', 'w') as f:
@@ -273,7 +274,7 @@ class BenchmarkSuite:
 
             # Create summary dataframe
             summary = dfnp[dfnp.index.isin(best_idx)]
-            f.write(summary.to_markdown() + '\n\n')
+            f.write(summary.round(4).to_markdown() + '\n\n')
             
             # Détails par tâche
             best = df[df.index.isin(best_idx)]
@@ -309,24 +310,48 @@ class BenchmarkSuite:
                 else:
                     raise ValueError('Invalid task type')
 
-    # def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
-    #     """Génère des visualisations des résultats"""
-    #     # Performance plot
-    #     plt.figure(figsize=(12, 6))
-    #     for metric in ['Accuracy', 'MSE']:
-    #         if df[metric].sum() > 0:  # Only plot if metric is used
-    #             plt.subplot(1, 2, 1 if metric == 'Accuracy' else 2)
-    #             df.boxplot(column=metric, by='Model')
-    #             plt.title(f'{metric} by Model')
-    #             plt.xticks(rotation=45)
-    #     plt.tight_layout()
-    #     plt.savefig(f'{output_path}/performance.png')
+    def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
+        """Génère des visualisations des résultats pour chaque tâche."""
+
+        # Pour chaque tâche
+        for task_name in df['Task'].unique():
+            task_df = df[df['Task'] == task_name]
+            #task_df = task_df.drop(['Task', 'Task Params', 'Model Params', 'Training Params'], axis=1)
+            
+            # Performance plot
+            plt.figure(figsize=(12, 6))
+            if not np.isnan(task_df['Accuracy'].iloc[0]):
+                # Classification
+                sns.scatterplot(data=task_df, x='Precision', y='Recall', hue='Model')
+                #task_df.boxplot(column=['Accuracy', 'Precision', 'Recall'], by='Model')
+                plt.title(f'Classification Metrics by Model for Task: {task_name}')
+            else:
+                # Regression
+                sns.scatterplot(data=task_df, x='MSE', y='Training Time (s)', hue='Model')
+                #task_df.boxplot(column='MSE', by='Model')
+                plt.title(f'MSE by Model for Task: {task_name}')
+            
+            # Save plot
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(f'{output_path}/{task_name}_performance.png')
+
+        # Performance plot
+        # plt.figure(figsize=(12, 6))
+        # for metric in ['Accuracy', 'MSE']:
+        #     if df[metric].sum() > 0:  # Only plot if metric is used
+        #         plt.subplot(1, 2, 1 if metric == 'Accuracy' else 2)
+        #         df.boxplot(column=metric, by='Model')
+        #         plt.title(f'{metric} by Model')
+        #         plt.xticks(rotation=45)
+        # plt.tight_layout()
+        # plt.savefig(f'{output_path}/performance.png')
         
-    #     # Time and Memory plot
-    #     plt.figure(figsize=(12, 6))
-    #     df.boxplot(column=['Training Time (s)', 'Memory Usage (MB)'], by='Model')
-    #     plt.title('Computational Resources by Model')
-    #     plt.xticks(rotation=45)
-    #     plt.tight_layout()
-    #     plt.savefig(f'{output_path}/resources.png')
+        # # Time and Memory plot
+        # plt.figure(figsize=(12, 6))
+        # df.boxplot(column=['Training Time (s)', 'Memory Usage (MB)'], by='Model')
+        # plt.title('Computational Resources by Model')
+        # plt.xticks(rotation=45)
+        # plt.tight_layout()
+        # plt.savefig(f'{output_path}/resources.png')
 

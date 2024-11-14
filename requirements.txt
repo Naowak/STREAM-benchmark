@@ -4,4 +4,5 @@ numpy
 tabulate
 ipykernel
 matplotlib
+seaborn
 tqdm
