@@ -87,6 +87,7 @@ class BenchmarkSuite:
             format='%(asctime)s - %(levelname)s - %(message)s'
         )
         self.logger = logging.getLogger(__name__)
+        self.logger.info(f"Initialized benchmark process for model: {model_name}")
         
 
     def add_task(self, task: Task):
@@ -222,6 +223,7 @@ class BenchmarkSuite:
     def generate_report(self, output_path: str='benchmark_results'):
         """Génère un rapport détaillé des résultats.
         aggregate: 'mean', 'median' or 'max'"""
+        self.logger.info(f"Generating report & plots for model: {self.model_name}")
         
         # Création du dossier de sortie
         os.makedirs(output_path, exist_ok=True)
@@ -309,6 +311,9 @@ class BenchmarkSuite:
                     ))
                 else:
                     raise ValueError('Invalid task type')
+        
+        self.logger.info(f"Report & plots generated at {output_path}")
+
 
     def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
         """Génère des visualisations des résultats pour chaque tâche."""
@@ -342,6 +347,6 @@ class BenchmarkSuite:
             
             # Save plot
             plt.xticks(rotation=45)
-            plt.tight_layout(rect=[0, 0, 0.5, 0])  # Adjust layout to make room for the title
             plt.savefig(f'{output_path}/{task_name}_performance.png')
+            plt.close(fig)  # Close the figure to prevent display
 
