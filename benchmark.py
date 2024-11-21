@@ -1,5 +1,6 @@
 from typing import Dict, Any, Callable, List, Tuple, Optional
 from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
+from src.report_templates import classification_task_template, regression_task_template
 from dataclasses import dataclass
 from collections import defaultdict
 from tqdm import tqdm
@@ -30,6 +31,7 @@ class TaskResult:
     accuracy: float             # classification
     precision: Optional[float]  # classification
     recall: Optional[float]     # classification
+    bic: float
     training_time: float
     inference_time: float
     memory_usage: float
@@ -37,38 +39,6 @@ class TaskResult:
     model_args: Dict[str, Any]
     training_args: Dict[str, Any]
     number_params: int
-    # parameters: int
-
-    
-report_template = """
-- Training Time: {:.4f} seconds
-- Inference Time: {:.4f} seconds
-- Memory Usage: {:.4f} MB
-- Number Params: {}
-
-#### Task Parameters
-{}
-
-#### Model Parameters
-{}
-
-#### Training Parameters
-{}
-
-#### Performance Plot
-![Performance Plot](./{}_performance.png)
-
-"""
-
-classification_task_template = """
-#### Results
-- Accuracy: {:.4f}
-- Precision: {:.4f}
-- Recall: {:.4f}""" + report_template
-
-regression_task_template = """
-#### Results
-- MSE: {:.4f}""" + report_template
 
 class BenchmarkSuite:
     def __init__(self, model_class: Any, model_name: str, seeds: list[int] = [42, 43, 44, 45]):
@@ -80,6 +50,10 @@ class BenchmarkSuite:
         self.model_name = model_name
         self.tasks = {}
         self.results = defaultdict(list)
+        
+        # Check model class has count params method
+        if 'count_params' not in dir(model_class):
+            raise ValueError('Model class must have a count_params method')
 
         # Initialize logger
         logging.basicConfig(
@@ -152,6 +126,7 @@ class BenchmarkSuite:
                     'MSE': result.mse,
                     'Precision': result.precision,
                     'Recall': result.recall,
+                    'BIC': result.bic,
                     'Training Time (s)': result.training_time,
                     'Inference Time (s)': result.inference_time,
                     'Memory Usage (MB)': result.memory_usage,
@@ -179,9 +154,10 @@ class BenchmarkSuite:
             # Extrait le meilleur essai pour chaque tâches
             dfnp = df.drop(['Task Args', 'Model Args', 'Training Args'], axis=1)
             groups = dfnp.groupby(['Task', 'Model'])
-            best_idx_acc = groups['Accuracy'].idxmax()
-            best_idx_mse = groups['MSE'].idxmin()
-            best_idx = pd.concat([best_idx_acc, best_idx_mse]).dropna()
+            best_idx = groups['BIC'].idxmin()
+            # best_idx_acc = groups['Accuracy'].idxmax()
+            # best_idx_mse = groups['MSE'].idxmin()
+            # best_idx = pd.concat([best_idx_acc, best_idx_mse]).dropna()
 
             # Create summary dataframe
             summary = dfnp[dfnp.index.isin(best_idx)]
@@ -226,21 +202,6 @@ class BenchmarkSuite:
                     raise ValueError('Invalid task type')
         
         self.logger.info(f"Report & plots generated at {output_path}")
-
-
-
-    def _compute_bic_regression(self, n_samples: int, y_true:np.ndarray, y_pred:np.ndarray, n_params: int) -> float:
-        """Calcule le critère d'information bayésien pour la régression."""
-        mse = np.mean((y_true - y_pred) ** 2)
-        bic = -2 * np.log(mse) + n_params * np.log(n_samples)
-        return bic
-
-    def _compute_bic_classification(self, n_sample: int, y_true: np.ndarray, y_pred: np.ndarray, n_params: int) -> float:
-        """Calcule le critère d'information bayésien pour la classification."""
-        loglikelihood = np.sum(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
-        bic = -2 * loglikelihood + n_params * np.log(n_sample)
-        return bic
-
 
     def _select_random_hyperparameters(self, task: Task) -> Dict[str, Any]:
         """Sélectionne aléatoirement des hyperparamètres pour un modèle."""
@@ -288,50 +249,64 @@ class BenchmarkSuite:
         inference_time = time.time() - start_time
         
         # Evaluation des prédictions
-        metrics = self._evaluate_predictions(Y_test, predictions, task.is_classification)
+        metrics = self._evaluate_predictions(Y_test, predictions, model.count_params(), task.is_classification)
         
         # Enregistrement des résultats
         result = TaskResult(
             task_name=task.name,
             is_classification=task.is_classification,
-            accuracy=metrics['accuracy'],
-            mse=metrics['mse'],
-            precision=metrics['precision'],
-            recall=metrics['recall'],
+            **metrics, # accuracy, precision, recall, mse, bic
             training_time=training_time,
             inference_time=inference_time,
             memory_usage=memory_used,
             task_args=task.generator_params,
             model_args=model_hp,
             training_args=task.training_args,
-            number_params=model.count_params() if 'count_params' in dir(model) else None 
+            number_params=model.count_params()
         )
         self.results[task.name].append(result)
 
 
-    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, is_classification: bool) -> Dict[str, float]:
+    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool) -> Dict[str, float]:
         """Évalue les prédictions selon le type de tâche"""
+        # Flatten arrays
+        y_true = y_true.flatten()
+        y_pred = y_pred.flatten()
+
         if is_classification:
             # Convert to class indices if needed
-            y_true = (y_true > 0.5).astype(int)
-            y_pred = (y_pred > 0.5).astype(int)
+            y_true_bool = (y_true > 0.5).astype(int)
+            y_pred_bool = (y_pred > 0.5).astype(int)
                 
             return {
-                'accuracy': accuracy_score(y_true.flatten(), y_pred.flatten()),
-                'precision': precision_score(y_true.flatten(), y_pred.flatten(), average='weighted', zero_division=0),
-                'recall': recall_score(y_true.flatten(), y_pred.flatten(), average='weighted', zero_division=0),
-                'mse': None  # Non applicable pour la classification
+                'accuracy': accuracy_score(y_true_bool, y_pred_bool),
+                'precision': precision_score(y_true_bool, y_pred_bool, average='weighted', zero_division=0),
+                'recall': recall_score(y_true_bool, y_pred_bool, average='weighted', zero_division=0),
+                'mse': None,  # Non applicable pour la classification
+                'bic': self._compute_bic(y_true, y_pred, n_params, is_classification)
             }
         else:
             return {
                 'accuracy': None,  # Non applicable pour la régression
                 'precision': None,
                 'recall': None,
-                'mse': root_mean_squared_error(y_true.flatten(), y_pred.flatten())
+                'mse': root_mean_squared_error(y_true, y_pred),
+                'bic': self._compute_bic(y_true, y_pred, n_params, is_classification)
             }
         
 
-
+    def _compute_bic(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool, epsilon: float=1e-10) -> float:
+        """Calcule le critère d'information bayésien."""
+        n_sample = y_true.shape[0]
+        if is_classification:
+            y_pred = np.clip(y_pred, epsilon, 1 - epsilon) # Avoid log(0)
+            loglikelihood = np.sum(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+            bic = -2 * loglikelihood + n_params * np.log(n_sample)
+        else:
+            mse = np.mean((y_true - y_pred) ** 2)
+            bic = -2 * np.log(mse) + n_params * np.log(n_sample)
+        return bic
+        
 
     def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
         """Génère des visualisations des résultats pour chaque tâche."""
@@ -344,24 +319,19 @@ class BenchmarkSuite:
             # Performance plot
             fig, axes = plt.subplots(1, 3, figsize=(18, 6))
             fig.suptitle(f'Performance for Task: {task_name}', fontsize=16)
-            if not np.isnan(task_df['Accuracy'].iloc[0]):
-                # Classification
-                sns.scatterplot(data=task_df, x='Training Time (s)', y='Accuracy', hue='Accuracy', ax=axes[0])
-                axes[0].set_title('Training Time vs Accuracy')
-                sns.scatterplot(data=task_df, x='Memory Usage (MB)', y='Accuracy', hue='Accuracy', ax=axes[1])
-                axes[1].set_title('Memory Usage vs Accuracy')
-                sns.scatterplot(data=task_df, x='Number Params', y='Accuracy', hue='Accuracy', ax=axes[2])
-                axes[2].set_title('Number Parameters vs Accuracy')
-            elif not np.isnan(task_df['MSE'].iloc[0]):
-                # Regression
-                sns.scatterplot(data=task_df, x='Training Time (s)', y='MSE', hue='MSE', ax=axes[0])
-                axes[0].set_title('Training Time vs MSE')
-                sns.scatterplot(data=task_df, x='Memory Usage (MB)', y='MSE', hue='MSE', ax=axes[1])
-                axes[1].set_title('Memory Usage vs MSE')
-                sns.scatterplot(data=task_df, x='Number Params', y='MSE', hue='MSE', ax=axes[2])
-                axes[2].set_title('Number Parameters vs MSE')
-            else:
-                raise ValueError('Invalid task type')
+
+            # Performance vs Number of Parameters
+            metric = 'Accuracy' if not np.isnan(task_df['Accuracy'].iloc[0]) else 'MSE'
+            sns.scatterplot(data=task_df, x='Number Params', y=metric, hue=metric, ax=axes[0])
+            axes[0].set_title('Number Parameters vs ' + metric)
+
+            # Performance vs Training Time
+            sns.scatterplot(data=task_df, x='Training Time (s)', y=metric, hue=metric, ax=axes[1])
+            axes[1].set_title('Training Time vs ' + metric)
+
+            # Performance vs Memory Usage
+            sns.scatterplot(data=task_df, x='Memory Usage (MB)', y=metric, hue=metric, ax=axes[2])
+            axes[2].set_title('Memory Usage vs ' + metric)
             
             # Save plot
             plt.xticks(rotation=45)
