@@ -1,4 +1,7 @@
 from reservoirpy.nodes import Reservoir, Ridge, ESN
+import reservoirpy as rpy
+
+rpy.verbosity(0)  # no need to be too verbose here
 
 class ReservoirComputing():
 
@@ -49,7 +52,7 @@ class ReservoirComputing():
         if self.esn.reservoir.W is None:
             return params
         
-        params += self.esn.reservoir.W_in.size
+        params += self.esn.reservoir.Win.size
         params += self.esn.reservoir.W.size
         params += self.esn.reservoir.bias.size
         params += self.esn.readout.Wout.size

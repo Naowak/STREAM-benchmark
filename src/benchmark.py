@@ -1,6 +1,6 @@
 from typing import Dict, Any, Callable, List, Tuple, Optional
 from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
-from report_templates import classification_task_template, regression_task_template
+from src.report_templates import classification_task_template, regression_task_template
 from dataclasses import dataclass
 from collections import defaultdict
 from tqdm import tqdm
@@ -157,9 +157,6 @@ class Benchmark:
             dfnp = df.drop(['Task Args', 'Model Args', 'Training Args'], axis=1)
             groups = dfnp.groupby(['Task', 'Model'])
             best_idx = groups['BIC'].idxmin()
-            # best_idx_acc = groups['Accuracy'].idxmax()
-            # best_idx_mse = groups['MSE'].idxmin()
-            # best_idx = pd.concat([best_idx_acc, best_idx_mse]).dropna()
 
             # Create summary dataframe
             summary = dfnp[dfnp.index.isin(best_idx)]
@@ -272,8 +269,8 @@ class Benchmark:
     def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool) -> Dict[str, float]:
         """Évalue les prédictions selon le type de tâche"""
         # Flatten arrays
-        y_true = y_true.flatten()
-        y_pred = y_pred.flatten()
+        y_true = np.array(y_true).flatten()
+        y_pred = np.array(y_pred).flatten()
 
         if is_classification:
             # Convert to class indices if needed
