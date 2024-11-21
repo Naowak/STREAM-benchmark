@@ -7,3 +7,4 @@ matplotlib
 seaborn
 tqdm
 datasets
+reservoirpy

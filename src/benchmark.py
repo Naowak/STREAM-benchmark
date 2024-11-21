@@ -1,6 +1,6 @@
 from typing import Dict, Any, Callable, List, Tuple, Optional
 from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
-from src.report_templates import classification_task_template, regression_task_template
+from report_templates import classification_task_template, regression_task_template
 from dataclasses import dataclass
 from collections import defaultdict
 from tqdm import tqdm
@@ -40,7 +40,7 @@ class TaskResult:
     training_args: Dict[str, Any]
     number_params: int
 
-class BenchmarkSuite:
+class Benchmark:
     def __init__(self, model_class: Any, model_name: str, seeds: list[int] = [42, 43, 44, 45]):
         # Set seed
         self.seeds = seeds
@@ -107,10 +107,12 @@ class BenchmarkSuite:
             progress_bar.close()
             self.logger.info(f"Completed evaluation for task: {task.name}")
 
-    def generate_report(self, output_path: str='benchmark_results'):
-        """Génère un rapport détaillé des résultats.
-        aggregate: 'mean', 'median' or 'max'"""
+    def generate_report(self, output_path: str=''):
+        """Génère un rapport détaillé des résultats."""
         self.logger.info(f"Generating report & plots for model: {self.model_name}")
+
+        if not output_path:
+            output_path = f'./results/{self.model_name}'
         
         # Création du dossier de sortie
         os.makedirs(output_path, exist_ok=True)
