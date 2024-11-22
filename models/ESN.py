@@ -1,9 +1,9 @@
-from reservoirpy.nodes import Reservoir, Ridge, ESN
+from reservoirpy.nodes import Reservoir, Ridge, ESN as ESNrpy
 import reservoirpy as rpy
 
 rpy.verbosity(0)  # no need to be too verbose here
 
-class ReservoirComputing():
+class ESN():
 
     def __init__(self, n_units, spectral_radius, leak_rate, ridge):
         """
@@ -17,7 +17,7 @@ class ReservoirComputing():
         """
         self.reservoir = Reservoir(n_units, sr=spectral_radius, lr=leak_rate)
         self.readout = Ridge(ridge=ridge)
-        self.esn = ESN(reservoir=self.reservoir, readout=self.readout, workers=-1)
+        self.esn = ESNrpy(reservoir=self.reservoir, readout=self.readout, workers=-1)
     
     def train(self, X, Y):
         """

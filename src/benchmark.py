@@ -153,23 +153,18 @@ class Benchmark:
             # Résumé global
             f.write('## Global Performance Summary\n\n')
 
-            # Extrait le meilleur essai pour chaque tâches
-            dfnp = df.drop(['Task Args', 'Model Args', 'Training Args'], axis=1)
-            groups = dfnp.groupby(['Task', 'Model'])
-            best_idx = groups['BIC'].idxmin()
-
             # Create summary dataframe
-            summary = dfnp[dfnp.index.isin(best_idx)]
-            f.write(summary.round(4).to_markdown() + '\n\n')
+            best = self._extract_best_models(df)
+            f.write(best.round(4).to_markdown() + '\n\n')
             
             # Détails par tâche
-            best = df[df.index.isin(best_idx)]
-            for task_name in summary['Task']:
+            for task_name in best['Task']:
                 f.write(f'## Task: {task_name}')
                 task_df = best[best['Task'] == task_name].iloc[0]
+                is_classification = self._is_classification_task(task_name)
 
                 # Classification task
-                if not np.isnan(task_df['Accuracy']):
+                if is_classification:
                     f.write(classification_task_template.format(
                         task_df['Accuracy'], 
                         task_df['Precision'], 
@@ -185,7 +180,7 @@ class Benchmark:
                     ))
                 
                 # Régression task
-                elif not np.isnan(task_df['MSE']):
+                else:
                     f.write(regression_task_template.format(
                         task_df['MSE'],
                         task_df['Training Time (s)'],
@@ -197,8 +192,6 @@ class Benchmark:
                         task_df['Training Args'],
                         task_name,
                     ))
-                else:
-                    raise ValueError('Invalid task type')
         
         self.logger.info(f"Report & plots generated at {output_path}")
 
@@ -296,16 +289,53 @@ class Benchmark:
 
     def _compute_bic(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool, epsilon: float=1e-10) -> float:
         """Calcule le critère d'information bayésien."""
+        # Get number of samples
         n_sample = y_true.shape[0]
+
+        # Compute log likelihood
         if is_classification:
             y_pred = np.clip(y_pred, epsilon, 1 - epsilon) # Avoid log(0)
             loglikelihood = np.sum(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
-            bic = -2 * loglikelihood + n_params * np.log(n_sample)
         else:
-            mse = np.mean((y_true - y_pred) ** 2)
-            bic = -2 * np.log(mse) + n_params * np.log(n_sample)
+            # Compute BIC for regression
+            rss = np.sum((y_true - y_pred) ** 2)  # Residual Sum of Squares
+            loglikelihood = -n_sample / 2 * np.log(rss / n_sample)  # Gaussian likelihood
+
+        # Compute BIC and return it
+        bic = -2 * loglikelihood + n_params * np.log(n_sample)
         return bic
+    
+    def _extract_best_models(self, df: 'pd.DataFrame') -> 'pd.DataFrame':
+        """Extrait le meilleur modèle pour chaque tâche."""
+        # Suppression des colonnes inutiles
+        dfnp = df.drop(['Task Args', 'Model Args', 'Training Args'], axis=1)
+
+        # Création des groupes par 'Task' et 'Model'
+        groups = dfnp.groupby(['Task', 'Model'])
+
+        # Initialisation d'une liste pour les indices des meilleurs modèles
+        best_indices = []
+
+        # Parcours de chaque groupe
+        for (task, model), group in groups:
+            # Tri des modèles en fonction de la tâche
+            if self._is_classification_task(task):
+                sorted_group = group.sort_values(by='Accuracy', ascending=False)
+            else:
+                sorted_group = group.sort_values(by='MSE', ascending=True)
+            
+            # Obtenir les 5% meilleurs modèles
+            top_5_percent = sorted_group.head(max(1, int(len(sorted_group) * 0.05)))  # Au moins 1 modèle
+            best_idx = top_5_percent['BIC'].idxmin() # Choix du meilleur modèle en fonction du BIC
+            best_indices.append(best_idx) # Ajout de l'indice du meilleur modèle
+
+        # Récupérer les meilleurs modèles en fonction des indices
+        best_models = df.loc[best_indices]
+        return best_models
         
+    def _is_classification_task(self, task_name: str) -> bool:
+        """Vérifie si une tâche est de classification ou de régression."""
+        return self.tasks[task_name].is_classification
 
     def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
         """Génère des visualisations des résultats pour chaque tâche."""
@@ -320,7 +350,7 @@ class Benchmark:
             fig.suptitle(f'Performance for Task: {task_name}', fontsize=16)
 
             # Performance vs Number of Parameters
-            metric = 'Accuracy' if not np.isnan(task_df['Accuracy'].iloc[0]) else 'MSE'
+            metric = 'Accuracy' if self._is_classification_task(task_name) else 'MSE'
             sns.scatterplot(data=task_df, x='Number Params', y=metric, hue=metric, ax=axes[0])
             axes[0].set_title('Number Parameters vs ' + metric)
 

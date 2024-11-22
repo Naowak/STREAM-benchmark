@@ -8,3 +8,6 @@ seaborn
 tqdm
 datasets
 reservoirpy
+torch 
+torchvision 
+torchaudio
