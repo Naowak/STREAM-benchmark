@@ -39,73 +39,6 @@ class Transformer(nn.Module):
         self.optimizer = None
         self.criterion = None
 
-    def _define_model(self, input_size, output_size, classification=False):
-        """
-        Définir le modèle Transformer.
-
-        Paramètres :
-        - input_size (int) : Dimension de l'entrée.
-        - output_size (int) : Dimension de la sortie.
-        """
-        # Define input and output sizes
-        self.input_size = input_size
-        self.output_size = output_size
-
-        # Define the layers
-        self.fc_in_encoder = nn.Linear(input_size, self.d_model, device=self.device)
-        self.fc_in_decoder = nn.Linear(input_size, self.d_model, device=self.device)
-        self.transformer = nn.Transformer(
-            d_model=self.d_model,
-            nhead=self.nhead,
-            num_encoder_layers=self.num_encoder_layers,
-            num_decoder_layers=self.num_decoder_layers,
-            dim_feedforward=self.dim_feedforward,
-            dropout=self.dropout,
-            batch_first=True,
-            device=self.device
-        )
-        self.fc_out = nn.Linear(self.d_model, output_size, device=self.device)
-
-        # Define the loss function and optimizer
-        self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        if classification:
-            self.criterion = nn.CrossEntropyLoss()
-        else:
-            self.criterion = nn.MSELoss()
-
-    def _generate_sequence_mask(self, length, mask_current=False):
-        """
-        Génère un masque de séquence pour le modèle Transformer.
-
-        Paramètres :
-        - length (int) : Taille de la séquence.
-        - see_current (bool) : Indique si le modèle peut voir l'élement actuel.
-
-        Retourne :
-        - torch.Tensor : Masque de séquence.
-        """
-        if mask_current:
-            length += 1
-        mask = (torch.triu(torch.ones(length, length)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask if not mask_current else mask[:-1, 1:]
-    
-    def _generate_memory_mask(self, src_len, tgt_len):
-        """
-        Génère un masque de mémoire pour le modèle Transformer.
-
-        Paramètres :
-        - src_len (int) : Taille de la séquence source.
-        - tgt_len (int) : Taille de la séquence cible.
-
-        Retourne :
-        - torch.Tensor : Masque de mémoire.
-        """
-        mask = torch.ones(tgt_len, src_len)
-        for i in range(tgt_len):
-            mask[i, i+1:] = float('-inf')
-        return mask
-
     def train(self, X, Y, epochs=10, batch_size=32, classification=False):
         """
         Entraîne le modèle Transformer.
@@ -196,99 +129,81 @@ class Transformer(nn.Module):
             
         return torch.cat(Y_preds, dim=0)
 
+    def count_params(self):
+        """
+        Compte le nombre de paramètres du modèle.
+
+        Retourne :
+        - int : Le nombre total de paramètres entraînables.
+        """
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def _define_model(self, input_size, output_size, classification=False):
+        """
+        Définir le modèle Transformer.
+
+        Paramètres :
+        - input_size (int) : Dimension de l'entrée.
+        - output_size (int) : Dimension de la sortie.
+        """
+        # Define input and output sizes
+        self.input_size = input_size
+        self.output_size = output_size
+
+        # Define the layers
+        self.fc_in_encoder = nn.Linear(input_size, self.d_model, device=self.device)
+        self.fc_in_decoder = nn.Linear(input_size, self.d_model, device=self.device)
+        self.transformer = nn.Transformer(
+            d_model=self.d_model,
+            nhead=self.nhead,
+            num_encoder_layers=self.num_encoder_layers,
+            num_decoder_layers=self.num_decoder_layers,
+            dim_feedforward=self.dim_feedforward,
+            dropout=self.dropout,
+            batch_first=True,
+            device=self.device
+        )
+        self.fc_out = nn.Linear(self.d_model, output_size, device=self.device)
+
+        # Define the loss function and optimizer
+        self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        if classification:
+            self.criterion = nn.CrossEntropyLoss()
+        else:
+            self.criterion = nn.MSELoss()
+
+    def _generate_sequence_mask(self, length, mask_current=False):
+        """
+        Génère un masque de séquence pour le modèle Transformer.
+
+        Paramètres :
+        - length (int) : Taille de la séquence.
+        - see_current (bool) : Indique si le modèle peut voir l'élement actuel.
+
+        Retourne :
+        - torch.Tensor : Masque de séquence.
+        """
+        if mask_current:
+            length += 1
+        mask = (torch.triu(torch.ones(length, length)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask if not mask_current else mask[:-1, 1:]
+    
+    def _generate_memory_mask(self, src_len, tgt_len):
+        """
+        Génère un masque de mémoire pour le modèle Transformer.
+
+        Paramètres :
+        - src_len (int) : Taille de la séquence source.
+        - tgt_len (int) : Taille de la séquence cible.
+
+        Retourne :
+        - torch.Tensor : Masque de mémoire.
+        """
+        mask = torch.ones(tgt_len, src_len)
+        for i in range(tgt_len):
+            mask[i, i+1:] = float('-inf')
+        return mask
 
 
-    # def run(self, X, max_len=50, start_token=None):
-    #     """
-    #     Generate predictions with the Transformer model.
-
-    #     Parameters:
-    #     - X: Input tensor (batch_size, seq_len_src, input_dim).
-    #     - max_len: Maximum sequence length to generate.
-    #     - start_token: Initial token for target sequence (e.g., start token).
-
-    #     Returns:
-    #     - torch.Tensor: Predicted sequence (batch_size, seq_len_tgt, output_dim).
-    #     """
-    #     # Convert input to PyTorch tensor
-    #     X = torch.tensor(X, dtype=torch.float32, device=self.device)
-
-    #     # Encode the source sequence
-    #     memory = self._forward(X, Y=None)
-
-    #     # Initialize target sequence with start token
-    #     batch_size = X.size(0)
-    #     if start_token is None:
-    #         start_token = torch.zeros(batch_size, 1, self.d_model, device=self.device)
-
-    #     Y = start_token
-    #     for _ in range(max_len):
-    #         # Generate mask for auto-regressive decoding
-    #         tgt_mask = nn.Transformer.generate_square_subsequent_mask(Y.size(1)).to(self.device)
-
-    #         # Decode step-by-step
-    #         output = self.transformer.decoder(
-    #             Y, memory, tgt_mask=tgt_mask, memory_key_padding_mask=(X.sum(dim=-1) == 0)
-    #         )
-    #         next_token = self.fc(output[:, -1:, :])  # Predict next token
-
-    #         # Append the new token to the target sequence
-    #         Y = torch.cat([Y, next_token], dim=1)
-
-    #         # Optional stopping condition (e.g., end token) can be added here
-
-    #     return Y
-
-    # def count_params(self):
-    #     """
-    #     Compte le nombre de paramètres du modèle.
-
-    #     Retourne :
-    #     - int : Le nombre total de paramètres entraînables.
-    #     """
-    #     return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-
-
-    # def _forward(self, X, Y=None):
-    #     """
-    #     Perform a forward pass with the Transformer model.
-
-    #     Parameters:
-    #     - X: Source sequence (batch_size, seq_len_src, input_dim).
-    #     - Y: Target sequence (batch_size, seq_len_tgt, output_dim).
-
-    #     Returns:
-    #     - torch.Tensor: Output from the model (batch_size, seq_len_tgt, output_dim).
-    #     """
-    #     # Masks
-    #     src_mask = None
-    #     tgt_mask = None
-    #     memory_mask = None
-
-    #     # Padding masks for sequences
-    #     src_key_padding_mask = (X.sum(dim=-1) == 0)  # Identify padding (batch_size, seq_len_src)
-    #     tgt_key_padding_mask = None if Y is None else (Y.sum(dim=-1) == 0)
-
-    #     # Encoder: Process the source sequence
-    #     memory = self.transformer.encoder(
-    #         X,
-    #         mask=src_mask,
-    #         src_key_padding_mask=src_key_padding_mask
-    #     )
-
-    #     # Decoder: Use target sequence if provided
-    #     if Y is not None:
-    #         outputs = self.transformer.decoder(
-    #             Y,
-    #             memory,
-    #             tgt_mask=tgt_mask,
-    #             memory_mask=memory_mask,
-    #             tgt_key_padding_mask=tgt_key_padding_mask,
-    #             memory_key_padding_mask=src_key_padding_mask
-    #         )
-    #         return self.fc(outputs)
-        
-    #     # If no `Y`, return encoder output for future use
-    #     return memory
 
