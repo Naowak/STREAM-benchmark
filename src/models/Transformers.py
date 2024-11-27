@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
-class Transformer(nn.Module):
+class Transformers(nn.Module):
     def __init__(self, d_model=128, nhead=8, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=512, dropout=0.1, learning_rate=1e-3, device='cpu'):
         """
         Classe pour un modèle Transformer configurable.
@@ -17,7 +17,7 @@ class Transformer(nn.Module):
         - learning_rate (float) : Taux d'apprentissage.
         - device (str) : Dispositif ('cpu' ou 'cuda').
         """
-        super(Transformer, self).__init__()
+        super(Transformers, self).__init__()
         self.d_model = d_model
         self.nhead = nhead
         self.num_encoder_layers = num_encoder_layers
