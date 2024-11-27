@@ -287,7 +287,7 @@ class Benchmark:
             }
         
 
-    def _compute_bic(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool, epsilon: float=1e-10) -> float:
+    def _compute_bic(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool, epsilon: float=1e-7) -> float:
         """Calcule le critère d'information bayésien."""
         # Get number of samples
         n_sample = y_true.shape[0]
