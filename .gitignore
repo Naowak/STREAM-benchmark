@@ -1,6 +1,7 @@
 benchmark_results/
 stream-venv/
 results/
+datasets/
 
 
 # Byte-compiled / optimized / DLL files

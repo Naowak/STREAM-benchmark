@@ -1,5 +1,5 @@
 import numpy as np
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 
 
 # ------------ USEFULL FUNCTIONS ------------ #
@@ -174,8 +174,7 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
         return input, target
 
     # Generate the samples
-    generate = lambda: generate_one_sample()
-    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate)
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
     return X_train, Y_train, X_test, Y_test
 
@@ -271,7 +270,7 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
 
     return X_train, Y_train, X_test, Y_test
 
-def generate_mnist_classification(n_samples=1000, training_ratio=0.8):
+def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None):
     """
     [Multi sequence]
     Génère une tâche de classification d'images MNIST : le modèle doit lire une image colonne par colonne,
@@ -280,6 +279,7 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8):
     Args:
     - n_samples (int): nombre d'échantillons
     - training_ratio (float): proportion de sample utilisée pour l'entraînement
+    - path (str): chemin vers le dataset MNIST, si None, le dataset est téléchargé
 
     Return:
     - X_train (train_samples, 28 + trigger + 1, 28 + trigger)
@@ -288,7 +288,7 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8):
     - Y_test (test_samples, 28 + trigger + 1, 10)
     """
     # Load MNIST data
-    dataset = load_dataset("mnist")
+    dataset = load_from_disk(path) if path else load_dataset("mnist")
     X = np.concat([np.array(dataset['train']['image']), np.array(dataset['test']['image'])]).transpose(0, 2, 1) # so we can read it column by column
     Y = np.concat([np.array(dataset['train']['label']), np.array(dataset['test']['label'])])
     
