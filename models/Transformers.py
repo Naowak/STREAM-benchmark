@@ -115,7 +115,7 @@ class Transformer(nn.Module):
             for [X_batch] in dataloader:
 
                 # Init Y_batch and compute emb_X for the encoder
-                Y_batch = torch.zeros((X_batch.shape[0], X_batch.shape[1], self.input_size), device=self.device)
+                Y_batch = torch.zeros((X_batch.shape[0], X_batch.shape[1], self.output_size), device=self.device)
                 emb_X = self.fc_in_encoder(X_batch)
 
                 # Iterate over the sequence to predict the next Y step by step
@@ -152,7 +152,7 @@ class Transformer(nn.Module):
 
         # Define the layers
         self.fc_in_encoder = nn.Linear(input_size, self.d_model, device=self.device)
-        self.fc_in_decoder = nn.Linear(input_size, self.d_model, device=self.device)
+        self.fc_in_decoder = nn.Linear(output_size, self.d_model, device=self.device)
         self.transformer = nn.Transformer(
             d_model=self.d_model,
             nhead=self.nhead,
