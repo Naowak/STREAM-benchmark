@@ -208,6 +208,8 @@ class Benchmark:
                     model_hp[hp_name] = int(np.random.choice(list(range(hp_values[0], hp_values[1]+1))))
                 else:
                     raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
+            elif type(hp_values) == tuple: # Choice of values
+                model_hp[hp_name] = np.random.choice(hp_values)
             else: # Error
                 raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
         return model_hp
