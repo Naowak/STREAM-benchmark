@@ -57,7 +57,7 @@ class ESN():
 
             # Compute errors on train dataset
             errors += [np.mean((y_preds - Y[i]) ** 2)]
-
+        
         # Create best model
         self.readout = self.ridges[np.argmin(errors)]
         self.model = self.reservoir >> self.readout
