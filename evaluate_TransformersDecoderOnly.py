@@ -82,7 +82,7 @@ if __name__ == "__main__":
     model_args = {
         "d_model": (16, 32, 64),
         "nhead": (2, 4, 8),
-        "num_layers": [1, 12],
+        "num_layers": [1, 8],
         "dim_feedforward": (64, 128, 256),
         "dropout": 0.1,
         "learning_rate": 1e-3
