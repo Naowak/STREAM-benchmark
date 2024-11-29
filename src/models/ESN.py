@@ -89,7 +89,7 @@ class ESN():
         
     def count_params(self):
         """
-        Compte le nombre de paramètres du modèle.
+        Compte le nombre de paramètres du modèle (appris et non-appris)
 
         Retourne :
         int : Le nombre de paramètres du modèle.

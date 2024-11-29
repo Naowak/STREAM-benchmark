@@ -19,7 +19,6 @@ if __name__ == "__main__":
         "n_units": [8, 512], 
         "spectral_radius": [0., 1.], 
         "leak_rate": [0., 1.], 
-        "ridge": 1e-6
     }
     training_args = {}
 
