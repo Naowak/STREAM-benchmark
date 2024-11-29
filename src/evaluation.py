@@ -14,7 +14,7 @@ evaluation = {
     'copy_task': {
         'generator': generate_copy_task,
         'is_classification': True,
-        'generator_params': {"n_samples": 1000, "sequence_length": 100, "delay": 10, "n_symbols": 10}, # input dim = 11, output dim = 10
+        'generator_params': {"n_samples": 1000, "sequence_length": 50, "delay": 10, "n_symbols": 10}, # input dim = 11, output dim = 10
     },
     'selective_copy_task': {
         'generator': generate_selective_copy_task,

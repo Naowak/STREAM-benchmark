@@ -232,6 +232,8 @@ class Benchmark:
                     raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
             elif type(hp_values) == tuple: # Choice of values
                 model_hp[hp_name] = np.random.choice(hp_values)
+            elif type(hp_values) == str: # String value
+                model_hp[hp_name] = hp_values
             else: # Error
                 raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
         return model_hp
