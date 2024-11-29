@@ -5,6 +5,15 @@ from torch.utils.data import DataLoader, TensorDataset
 
 class LSTM(nn.Module):
     def __init__(self, hidden_size=10, num_layers=1, learning_rate=1e-3, device='cpu'):
+        """
+        Classe pour un modèle LSTM.
+
+        Paramètres :
+        - hidden_size (int) : Dimension de l'espace caché.
+        - num_layers (int) : Nombre de couches LSTM.
+        - learning_rate (float) : Taux d'apprentissage.
+        - device (str) : Dispositif ('cpu' ou 'cuda').
+        """
         super(LSTM, self).__init__()
 
         # Paramètres du modèle
@@ -23,7 +32,18 @@ class LSTM(nn.Module):
         self.optimizer = None
         self.criterion = None
 
-    def train(self, X, Y, epochs=100, batch_size=32, classification=False):
+    def train(self, X, Y, epochs=100, batch_size=32, classification=False, prediction_start=0):
+        """
+        Entraîne le modèle LSTM.
+
+        Paramètres :
+        - X : Données d'entrée (numpy array ou tenseur). (sample, time, input_dim)
+        - Y : Données de sortie (numpy array ou tenseur). (sample, time, output_dim)
+        - epochs (int) : Nombre d'époques.
+        - batch_size (int) : Taille des mini-lots.
+        - classification (bool) : Indique si la tâche est une classification.
+        - prediction_start (int) : Indice de début de prédiction.
+        """
 
         # Convertir les données en tenseurs PyTorch
         X = torch.tensor(X, dtype=torch.float32, device=self.device)
@@ -53,7 +73,7 @@ class LSTM(nn.Module):
                 outputs = self.fc(outputs) # outputs: (batch_size, seq_length, output_size) 
 
                 # Calculer la perte
-                loss = self.criterion(outputs, batch_Y)
+                loss = self.criterion(outputs[:, prediction_start:, :], batch_Y[:, prediction_start:, :])
 
                 # Backward pass et mise à jour des poids
                 self.optimizer.zero_grad()
@@ -61,6 +81,15 @@ class LSTM(nn.Module):
                 self.optimizer.step()
 
     def run(self, X):
+        """
+        Génère des prédictions avec le modèle LSTM.
+        
+        Paramètres :
+        - X : Tenseur d'entrée (batch_size, seq_len, input_dim).
+        
+        Retourne :
+        - Tenseur de sortie (batch_size, seq_len, output_dim).
+        """
         # Convertir les données en tenseurs PyTorch
         X = torch.tensor(X, dtype=torch.float32, device=self.device)
 
@@ -77,9 +106,15 @@ class LSTM(nn.Module):
         return outputs.cpu().numpy()
 
     def count_params(self):
+        """"
+        Compte le nombre de paramètres du modèle.
+        """
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
     def _define_model(self, input_size, output_size):
+        """
+        Définit le modèle LSTM.
+        """
         self.input_size = input_size
         self.output_size = output_size
         self.model = nn.LSTM(input_size, self.hidden_size, self.num_layers, batch_first=True, device=self.device)
@@ -88,25 +123,3 @@ class LSTM(nn.Module):
     
 
 
-# # Exemple d'utilisation
-# input_size = 10  # Exemple de taille d'entrée
-# hidden_size = 20  # Exemple de taille cachée
-# output_size = 1  # Exemple de taille de sortie
-
-# # Créer une instance du modèle
-# lstm_model = LSTMModel(input_size, hidden_size, output_size)
-
-# # Données d'exemple
-# X_train = np.random.randn(100, 50, input_size)  # 100 séquences de longueur 50
-# Y_train = np.random.randn(100, output_size)  # 100 cibles
-
-# # Entraîner le modèle
-# lstm_model.train(X_train, Y_train, epochs=10, batch_size=16)
-
-# # Exécuter le modèle
-# X_test = np.random.randn(10, 50, input_size)  # 10 séquences de longueur 50
-# predictions = lstm_model.run(X_test)
-
-# # Compter les paramètres
-# num_params = lstm_model.count_params()
-# print(f'Nombre de paramètres: {num_params}')

@@ -36,9 +36,10 @@ def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8, t
 
     Return:
     - X_train (1, training_sequence, n_symbols)
-    - Y_train (1, delay + training_sequence[:-delay], n_symbols)
+    - Y_train (1, training_sequence[:-delay], n_symbols)
     - X_test (1, testing_sequence, n_symbols)
-    - Y_test (1, delay + testing_sequence[:-delay], n_symbols)
+    - Y_test (1, testing_sequence[:-delay], n_symbols)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     # Compute the size of the training and testing set
     training_size = int(sequence_length * training_ratio)
@@ -57,8 +58,11 @@ def generate_discrete_postcasting(sequence_length=1000, delay=10, n_symbols=8, t
     Y_train = np.concatenate([np.zeros((1, delay, n_symbols)), train_onehot[:, :-delay, :]], axis=1)
     X_test = test_onehot
     Y_test = np.concatenate([np.zeros((1, delay, n_symbols)), test_onehot[:, :-delay, :]], axis=1)
+
+    # Prediction start
+    prediction_start = delay
     
-    return X_train, Y_train, X_test, Y_test
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio=0.8):
     """
@@ -76,6 +80,7 @@ def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio
     - Y_train (1, delay + sequence[:-delay], 1)
     - X_test (1, sequence, 1)
     - Y_test (1, delay + sequence[:-delay], 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     # Compute the size of the training and testing set
     training_size = int(sequence_length * training_ratio)
@@ -91,8 +96,11 @@ def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio
     Y_train = np.concatenate([delay_sequence, training_sequence[:-delay]]).reshape(1, training_size, 1)
     X_test = test_sequence.reshape(1, testing_size, 1)
     Y_test = np.concatenate([delay_sequence, test_sequence[:-delay]]).reshape(1, testing_size, 1)
+
+    # Prediction start
+    prediction_start = delay
     
-    return X_train, Y_train, X_test, Y_test
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=8, training_ratio=0.8):
     """
@@ -112,6 +120,7 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     - Y_train (train_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols)
     - X_test (test_samples, sequence + delay + 1 (marker) + zero_sequence, n_symbols + 1 (trigger))
     - Y_test (test_samples, zero_sequence + delay + 1 (marker) + sequence, n_symbols)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_one_sample(delay):
         # Generate a random sequence
@@ -131,8 +140,11 @@ def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=
     # Generate the samples
     generate = lambda: generate_one_sample(delay)
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate)
+
+    # Prediction start
+    prediction_start = sequence_length + delay + 1
     
-    return X_train, Y_train, X_test, Y_test
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n_markers=2, n_symbols=8, training_ratio=0.8):
     """
@@ -153,6 +165,7 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
     - Y_train (train_samples, zero_sequence + delay + 1 (trigger) + markers, n_symbols)
     - X_test (test_samples, sequence + delay + 1 (trigger) + zero_markers, n_symbols + 2 (marker + trigger))
     - Y_test (test_samples, zero_sequence + delay + 1 (trigger) + markers, n_symbols)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_one_sample():
         # generate random sequence
@@ -176,7 +189,10 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
     # Generate the samples
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = sequence_length + delay + 1
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 
 
@@ -201,6 +217,7 @@ def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, t
     - Y_train (train_samples, sequence + trigger + 1, 2*max_number - 1)
     - X_test (test_samples, sequence + trigger + 1, max_number + marker + trigger)
     - Y_test (test_samples, sequence + trigger + 1, 2*max_number - 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_one_sample():
         # Génère la sequence
@@ -223,7 +240,10 @@ def generate_adding_problem(n_samples=1000, sequence_length=100, max_number=9, t
     # Generate the samples
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = sequence_length + 1
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, training_ratio=0.8):
     """
@@ -242,6 +262,7 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
     - Y_train (train_samples, zero_seq + trigger + sequence, n_symbols)
     - X_test (test_samples, sequence + trigger + zero_seq, n_symbols + order (sequence_length) + trigger)
     - Y_test (test_samples, zero_seq + trigger + sequence, n_symbols)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_one_sample():
         # Create a sequence of symbols & a random order
@@ -268,7 +289,10 @@ def generate_sorting_problem(n_samples=1000, sequence_length=100, n_symbols=8, t
     # Generate the samples
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = sequence_length + 1
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None):
     """
@@ -286,6 +310,7 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None)
     - Y_train (train_samples, 28 + trigger + 1, 10)
     - X_test (test_samples, 28 + trigger + 1, 28 + trigger)
     - Y_test (test_samples, 28 + trigger + 1, 10)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     # Load MNIST data
     dataset = load_from_disk(path) if path else load_dataset("mnist")
@@ -313,7 +338,10 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None)
     X_test = inputs[training_size:]
     Y_test = targets[training_size:]
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = 28 + 1
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 #def generate_adding_mnist(n_samples=1000, training_ratio=0.8):
 #    pass
@@ -342,6 +370,7 @@ def generate_discrete_pattern_completion(n_samples=1000, sequence_length=1000, n
     - Y_train (training_samples, sequence, n_symbols)
     - X_test (testing_samples, sequence, n_symbols + marker)
     - Y_test (testing_samples, sequence, n_symbols)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_one_sample():
         # Generate a base pattern
@@ -363,7 +392,10 @@ def generate_discrete_pattern_completion(n_samples=1000, sequence_length=1000, n
     # Generate the samples
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_continuous_pattern_completion(n_samples=1000, sequence_length=100, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
@@ -384,6 +416,7 @@ def generate_continuous_pattern_completion(n_samples=1000, sequence_length=100, 
     - Y_train (training_samples, sequence, 1)
     - X_test (testing_samples, sequence, 1)
     - Y_test (testing_samples, sequence, 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_one_sample():
         # Generate a base pattern
@@ -405,7 +438,10 @@ def generate_continuous_pattern_completion(n_samples=1000, sequence_length=100, 
     # Generate the samples
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, training_ratio=0.8):
     """
@@ -424,6 +460,7 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, 
     - Y_train (training_samples, sequence + trigger + 1, 1)
     - X_test (testing_samples, sequence + trigger + 1, 3)
     - Y_test (testing_samples, sequence + trigger + 1, 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     def generate_valid_sequence(length, max_depth):
         sequence = []
@@ -482,7 +519,10 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, 
     # Generate the samples
     X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = sequence_length + 1
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 
 
@@ -506,6 +546,7 @@ def generate_sin_forecasting(sequence_length=1000, forecast_length=1, training_r
     - Y_train (1, training_sequence, 1)
     - X_test (1, testing_sequence, 1)
     - Y_test (1, testing_sequence, 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     # Generate the signal
     length = sequence_length + forecast_length
@@ -527,7 +568,10 @@ def generate_sin_forecasting(sequence_length=1000, forecast_length=1, training_r
     X_test = input[:, training_size:, :]
     Y_test = target[:, training_size:, :]
 
-    return X_train, Y_train, X_test, Y_test
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
 
 def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
     """
@@ -545,6 +589,7 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, traini
     - Y_train (1, training_sequence, 3)
     - X_test (1, testing_sequence, 3)
     - Y_test (1, testing_sequence, 3)
+    - prediction_start (int): the timestep at which the model should begin making predictions
     """
     # Define the Lorenz system
     def lorenz(x, y, z, s=10, r=28, b=2.667):
@@ -580,4 +625,7 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, traini
     X_test = input[:, training_size:, :]
     Y_test = target[:, training_size:, :]
 
-    return X_train, Y_train, X_test, Y_test    
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start

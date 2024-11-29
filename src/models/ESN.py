@@ -25,7 +25,7 @@ class ESN():
         self.readout = None
         self.model = None
     
-    def train(self, X, Y):
+    def train(self, X, Y, classification=False, prediction_start=0):
         """
         Entraîne l'ESN sur les données d'entraînement.
         
@@ -45,18 +45,20 @@ class ESN():
 
         # Train ridges
         errors = []
+        train_states = states[:, prediction_start:, :]
+        train_Y = Y[:, prediction_start:, :]
         for ridge in self.ridges:
             # Train ridge
-            ridge.fit(states, Y)
+            ridge.fit(train_states, train_Y)
 
             # Make prediction on train dataset
             y_preds = []
-            for i in range(X.shape[0]):
-                y_preds += [ridge.run(states[i])]
+            for i in range(train_states.shape[0]):
+                y_preds += [ridge.run(train_states[i])]
             y_preds = np.array(y_preds)
 
             # Compute errors on train dataset
-            errors += [np.mean((y_preds - Y[i]) ** 2)]
+            errors += [np.mean((y_preds - train_Y) ** 2)]
         
         # Create best model
         self.readout = self.ridges[np.argmin(errors)]

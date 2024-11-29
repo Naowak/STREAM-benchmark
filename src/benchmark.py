@@ -42,6 +42,13 @@ class TaskResult:
 
 class Benchmark:
     def __init__(self, model_class: Any, model_name: str, seeds: list[int] = [42, 43, 44, 45]):
+        """Initialise un processus de benchmark pour un modèle.
+        
+        Paramètres :
+        - model_class : Classe du modèle à évaluer.
+        - model_name (str) : Nom du modèle.
+        - seeds (list[int]) : Liste des graines aléatoires à utiliser.
+        """
         # Set seed
         self.seeds = seeds
 
@@ -64,7 +71,11 @@ class Benchmark:
         self.logger.info(f"Initialized benchmark process for model: {model_name}")
 
     def add_task(self, task: Task):
-        """Ajoute une tâche au benchmark."""
+        """Ajoute une tâche au benchmark.
+        
+        Paramètres :
+        - task : Tâche à ajouter.
+        """
         self.tasks[task.name] = task
         self.logger.info(f"Added task: {task.name}")
 
@@ -86,7 +97,7 @@ class Benchmark:
             
                 # Génération des données
                 try:
-                    X_train, Y_train, X_test, Y_test = task.generator(**(task.generator_params or {}))
+                    X_train, Y_train, X_test, Y_test, prediction_start = task.generator(**(task.generator_params or {}))
                 except Exception as e:
                     self.logger.error(f"\033[91mError generating dataset for task {task.name}: {e}\033[0m")
                     continue
@@ -97,7 +108,7 @@ class Benchmark:
                     model_hp = self._select_random_hyperparameters(task)
 
                     # Evaluate model with hyperparameters
-                    self._evaluate_model_with_hp(X_train, Y_train, X_test, Y_test, task, model_hp)
+                    self._evaluate_model_with_hp(X_train, Y_train, X_test, Y_test, prediction_start, task, model_hp)
 
                     # Update progress bar
                     progress_bar.update(1)
@@ -108,7 +119,11 @@ class Benchmark:
             self.logger.info(f"Completed evaluation for task: {task.name}")
 
     def generate_report(self, output_path: str=''):
-        """Génère un rapport détaillé des résultats."""
+        """Génère un rapport détaillé des résultats.
+        
+        Paramètres :
+        - output_path (str) : Chemin de sortie pour les résultats.
+        """
         self.logger.info(f"Generating report & plots for model: {self.model_name}")
 
         if not output_path:
@@ -196,7 +211,14 @@ class Benchmark:
         self.logger.info(f"Report & plots generated at {output_path}")
 
     def _select_random_hyperparameters(self, task: Task) -> Dict[str, Any]:
-        """Sélectionne aléatoirement des hyperparamètres pour un modèle."""
+        """Sélectionne aléatoirement des hyperparamètres pour un modèle.
+        
+        Paramètres :
+        - task : Tâche pour laquelle les hyperparamètres doivent être sélectionnés.
+        
+        Retourne :
+        - Dict[str, Any] : Dictionnaire d'hyperparamètres sélectionnés.
+        """
         model_hp = {}
         for hp_name, hp_values in task.model_args.items():
             if type(hp_values) in [int, float]: # Unique value, no choice
@@ -214,8 +236,18 @@ class Benchmark:
                 raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
         return model_hp
 
-    def _evaluate_model_with_hp(self, X_train, Y_train, X_test, Y_test, task, model_hp):
-        """Pour chaque tâche du benchmark, évalue un modèle en effectuant une recherche d'hyperparamètres."""
+    def _evaluate_model_with_hp(self, X_train, Y_train, X_test, Y_test, prediction_start, task, model_hp):
+        """Pour chaque tâche du benchmark, évalue un modèle en effectuant une recherche d'hyperparamètres.
+        
+        Paramètres :
+        - X_train : Données d'entraînement.
+        - Y_train : Données de sortie d'entraînement.
+        - X_test : Données de test.
+        - Y_test : Données de sortie de test.
+        - prediction_start : Indice de début de prédiction.
+        - task : Tâche à évaluer.
+        - model_hp : Hyperparamètres du modèle.
+        """
 
         # Retrieve task & Initialisation des mesures de performance
         start_memory = psutil.Process().memory_info().rss
@@ -224,7 +256,7 @@ class Benchmark:
         # Entraînement
         try:
             model = self.model_class(**model_hp)
-            model.train(X_train, Y_train)
+            model.train(X_train, Y_train, classification=task.is_classification, prediction_start=prediction_start)
         except Exception as e:
             self.logger.error(f"\033[91mError training model on task {task.name}: {e}\033[0m")
             return
@@ -243,7 +275,7 @@ class Benchmark:
         inference_time = time.time() - start_time
         
         # Evaluation des prédictions
-        metrics = self._evaluate_predictions(Y_test, predictions, model.count_params(), task.is_classification)
+        metrics = self._evaluate_predictions(Y_test, predictions, prediction_start, model.count_params(), task.is_classification)
         
         # Enregistrement des résultats
         result = TaskResult(
@@ -261,11 +293,22 @@ class Benchmark:
         self.results[task.name].append(result)
 
 
-    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool) -> Dict[str, float]:
-        """Évalue les prédictions selon le type de tâche"""
+    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, prediction_start: int, n_params: int, is_classification: bool) -> Dict[str, float]:
+        """Évalue les prédictions selon le type de tâche.
+        
+        Paramètres :
+        - y_true : Données de sortie réelles.
+        - y_pred : Données de sortie prédites.
+        - prediction_start : Indice de début de prédiction.
+        - n_params : Nombre de paramètres du modèle.
+        - is_classification : Indique si la tâche est une classification.
+        
+        Retourne :
+        - Dict[str, float] : Mesures de performance.
+        """
         # Flatten arrays
-        y_true = np.array(y_true).flatten()
-        y_pred = np.array(y_pred).flatten()
+        y_true = np.array(y_true)[:, prediction_start:, :].flatten()
+        y_pred = np.array(y_pred)[:, prediction_start:, :].flatten()
 
         if is_classification:
             # Convert to class indices if needed
@@ -290,7 +333,18 @@ class Benchmark:
         
 
     def _compute_bic(self, y_true: np.ndarray, y_pred: np.ndarray, n_params: int, is_classification: bool, epsilon: float=1e-7) -> float:
-        """Calcule le critère d'information bayésien."""
+        """Calcule le critère d'information bayésien.
+        
+        Paramètres :
+        - y_true : Données de sortie réelles.
+        - y_pred : Données de sortie prédites.
+        - n_params : Nombre de paramètres du modèle.
+        - is_classification : Indique si la tâche est une classification.
+        - epsilon : Valeur pour éviter les erreurs de calcul.
+        
+        Retourne :
+        - float : Critère d'information bayésien (BIC).
+        """
         # Get number of samples
         n_sample = y_true.shape[0]
 
@@ -308,7 +362,14 @@ class Benchmark:
         return bic
     
     def _extract_best_models(self, df: 'pd.DataFrame') -> 'pd.DataFrame':
-        """Extrait le meilleur modèle pour chaque tâche."""
+        """Extrait le meilleur modèle pour chaque tâche.
+        
+        Paramètres :
+        - df : DataFrame des résultats.
+        
+        Retourne :
+        - pd.DataFrame : DataFrame des meilleurs modèles.
+        """
         # Suppression des colonnes inutiles
         dfnp = df.drop(['Task Args', 'Model Args', 'Training Args'], axis=1)
 
@@ -336,12 +397,23 @@ class Benchmark:
         return best_models
         
     def _is_classification_task(self, task_name: str) -> bool:
-        """Vérifie si une tâche est de classification ou de régression."""
+        """Vérifie si une tâche est de classification ou de régression.
+        
+        Paramètres :
+        - task_name : Nom de la tâche.
+        
+        Retourne :
+        - bool : True si la tâche est de classification, False sinon.
+        """
         return self.tasks[task_name].is_classification
 
     def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
-        """Génère des visualisations des résultats pour chaque tâche."""
-
+        """Génère des visualisations des résultats pour chaque tâche.
+        
+        Paramètres :
+        - df : DataFrame des résultats.
+        - output_path : Chemin de sortie pour les visualisations.
+        """
         # Pour chaque tâche
         for task_name in df['Task'].unique():
             # Filter task

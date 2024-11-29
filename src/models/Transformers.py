@@ -39,7 +39,7 @@ class Transformers(nn.Module):
         self.optimizer = None
         self.criterion = None
 
-    def train(self, X, Y, epochs=10, batch_size=32, classification=False):
+    def train(self, X, Y, epochs=10, batch_size=32, classification=False, prediction_start=0):
         """
         Entraîne le modèle Transformer.
 
@@ -49,6 +49,7 @@ class Transformers(nn.Module):
         - epochs (int) : Nombre d'époques.
         - batch_size (int) : Taille des mini-lots.
         - classification (bool) : Indique si la tâche est une classification.
+        - prediction_start (int) : Indice de début de prédiction.
         """
         # Convertir les données en tenseurs PyTorch
         X = torch.tensor(X, dtype=torch.float32, device=self.device)
@@ -78,7 +79,7 @@ class Transformers(nn.Module):
                 output = self.fc_out(tr_output)
 
                 # Calculer la perte
-                loss = self.criterion(output, Y_batch)
+                loss = self.criterion(output[:, prediction_start:, :], Y_batch[:, prediction_start:, :])
 
                 # Backward pass et mise à jour des poids
                 self.optimizer.zero_grad()
