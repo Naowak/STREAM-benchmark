@@ -1,6 +1,7 @@
 from typing import Dict, Any, Callable, List, Tuple, Optional
 from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
 from src.report_templates import classification_task_template, regression_task_template
+from src.evaluation import evaluation
 from dataclasses import dataclass
 from collections import defaultdict
 from tqdm import tqdm
@@ -25,6 +26,7 @@ class Task:
 
 @dataclass
 class TaskResult:
+    model_name: str
     task_name: str
     is_classification: bool
     mse: float                  # régression
@@ -82,6 +84,11 @@ class Benchmark:
     def run(self):
         """Évalue un modèle sur toutes les tâches enregistrées."""
         self.logger.info(f"Starting evaluation of model: {self.model_name}")
+
+        # Vérification des tâches
+        if len(self.tasks) == 0:
+            self.logger.error("No tasks added to the benchmark")
+            return
         
         # Pour chaque tâche
         for task in self.tasks.values():
@@ -118,45 +125,32 @@ class Benchmark:
             progress_bar.close()
             self.logger.info(f"Completed evaluation for task: {task.name}")
 
-    def generate_report(self, output_path: str=''):
+    def generate_report(self):
         """Génère un rapport détaillé des résultats.
-        
-        Paramètres :
-        - output_path (str) : Chemin de sortie pour les résultats.
         """
         self.logger.info(f"Generating report & plots for model: {self.model_name}")
 
-        if not output_path:
-            output_path = f'./results/{self.model_name}'
+        # Check if results are available
+        output_path = f'./results/{self.model_name}'
+        if not os.path.exists(output_path):
+            self.logger.error(f"No files found for model {self.model_name}")
+            return
+
+        # Récupération des résultats pour chaque tâche
+        for task_name in evaluation.keys():
+            if os.path.exists(f'{output_path}/{task_name}.csv'):
+                self.results[task_name] = pd.read_csv(f'{output_path}/{task_name}.csv')
+            else:
+                self.logger.warning(f"No results found for task {task_name}")
         
-        # Création du dossier de sortie
-        os.makedirs(output_path, exist_ok=True)
+        # Check if any results were found
+        if len(self.results) == 0:
+            self.logger.error(f"No results found for model {self.model_name}")
+            return
         
-        # Conversion des résultats en DataFrame
-        results_data = []
-        for task_results in self.results.values():
-            for result in task_results:
-                results_data.append({
-                    'Model': self.model_name,
-                    'Task': result.task_name,
-                    'Accuracy': result.accuracy,
-                    'MSE': result.mse,
-                    'Precision': result.precision,
-                    'Recall': result.recall,
-                    'BIC': result.bic,
-                    'Training Time (s)': result.training_time,
-                    'Inference Time (s)': result.inference_time,
-                    'Memory Usage (MB)': result.memory_usage,
-                    'Task Args': result.task_args,
-                    'Model Args': result.model_args,
-                    'Training Args': result.training_args,
-                    'Number Params': result.number_params
-                })
-    
-        df = pd.DataFrame(results_data)
-        
-        # Sauvegarde des résultats bruts
-        df.to_csv(f'{output_path}/results.csv', index=False)
+        # Concaténation des résultats 
+        df = pd.concat([df for df in self.results.values()]).reset_index(drop=True)
+        #df.to_csv(f'{output_path}/results.csv', index=False) # Uncomment to save concat results to CSV
         
         # Génération des graphiques
         self._generate_plots(df, output_path)
@@ -281,6 +275,7 @@ class Benchmark:
         
         # Enregistrement des résultats
         result = TaskResult(
+            model_name=self.model_name,
             task_name=task.name,
             is_classification=task.is_classification,
             **metrics, # accuracy, precision, recall, mse, bic
@@ -293,6 +288,7 @@ class Benchmark:
             number_params=model.count_params()
         )
         self.results[task.name].append(result)
+        self._save_task_results(task.name, self.results[task.name])
 
 
     def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, prediction_start: int, n_params: int, is_classification: bool) -> Dict[str, float]:
@@ -363,6 +359,40 @@ class Benchmark:
         bic = -2 * loglikelihood + n_params * np.log(n_sample)
         return bic
     
+    def _save_task_results(self, task_name: str, results: List[TaskResult]):
+        """
+        Sauvegarde les résultats d'une tâche dans un fichier CSV.
+        
+        Paramètres :
+        - task_name : Nom de la tâche.
+        - results : Liste des résultats de la tâche.
+        """
+        # Création du dossier de sortie
+        os.makedirs(f'./results/{self.model_name}', exist_ok=True)
+
+        # Conversion des résultats en DataFrame
+        results_data = []
+        for result in results:
+            results_data.append({
+                'Model': result.model_name,
+                'Task': result.task_name,
+                'Accuracy': result.accuracy,
+                'MSE': result.mse,
+                'Precision': result.precision,
+                'Recall': result.recall,
+                'BIC': result.bic,
+                'Training Time (s)': result.training_time,
+                'Inference Time (s)': result.inference_time,
+                'Memory Usage (MB)': result.memory_usage,
+                'Task Args': result.task_args,
+                'Model Args': result.model_args,
+                'Training Args': result.training_args,
+                'Number Params': result.number_params
+            })
+
+        df = pd.DataFrame(results_data)
+        df.to_csv(f'./results/{self.model_name}/{task_name}.csv', index=False)
+    
     def _extract_best_models(self, df: 'pd.DataFrame') -> 'pd.DataFrame':
         """Extrait le meilleur modèle pour chaque tâche.
         
@@ -395,6 +425,7 @@ class Benchmark:
             best_indices.append(best_idx) # Ajout de l'indice du meilleur modèle
 
         # Récupérer les meilleurs modèles en fonction des indices
+        print(best_indices)
         best_models = df.loc[best_indices]
         return best_models
         
@@ -407,7 +438,7 @@ class Benchmark:
         Retourne :
         - bool : True si la tâche est de classification, False sinon.
         """
-        return self.tasks[task_name].is_classification
+        return evaluation[task_name]['is_classification']
 
     def _generate_plots(self, df: 'pd.DataFrame', output_path: str):
         """Génère des visualisations des résultats pour chaque tâche.
