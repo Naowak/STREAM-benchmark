@@ -66,7 +66,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="ESN", choices=MODELS.keys())
     parser.add_argument("--n_trials", type=int, default=1)
-    parser.add_argument("--nb_seeds", type=int, default=1)
+    parser.add_argument("--n_seeds", type=int, default=1)
     parser.add_argument("--task", type=str, default="all", choices=['all', 'none'] + list(evaluation.keys()))
     parser.add_argument("--report", type=bool, default=True)
     return parser.parse_args()
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     benchmark = Benchmark(
         model_class=MODELS[args.model]['model'], 
         model_name=args.model, 
-        seeds=list(range(args.nb_seeds))
+        seeds=list(range(args.n_seeds))
     )
 
     # Args pour le modèle et l'entraînement

@@ -425,7 +425,6 @@ class Benchmark:
             best_indices.append(best_idx) # Ajout de l'indice du meilleur modèle
 
         # Récupérer les meilleurs modèles en fonction des indices
-        print(best_indices)
         best_models = df.loc[best_indices]
         return best_models
         
