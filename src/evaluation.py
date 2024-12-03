@@ -1,6 +1,7 @@
 from src.tasks import *
 
 evaluation = {
+    # Tests de mémoire simple
     'discrete_postcasting': {
         'generator': generate_discrete_postcasting,
         'is_classification': True,
@@ -10,6 +11,28 @@ evaluation = {
         'generator': generate_continue_postcasting,
         'is_classification': False,
         'generator_params': {"sequence_length": 1000, "delay": 10}, # input dim = 1, output dim = 1
+    },
+    # Tests de traitement du signal
+    'sin_forecasting': {
+        'generator': generate_sin_forecasting,
+        'is_classification': False,
+        'generator_params': {"sequence_length": 1000, "forecast_length": 10}, # input dim = 1, output dim = 1
+    },
+    'chaotic_forecasting': {
+        'generator': generate_chaotic_forecasting,
+        'is_classification': False,
+        'generator_params': {"sequence_length": 1000, "forecast_length": 10}, # input dim = 3, output dim = 3
+    },
+    # Tests de dépendances à long terme
+    'discrete_pattern_completion': {
+        'generator': generate_discrete_pattern_completion,
+        'is_classification': True,
+        'generator_params': {"n_samples": 1000, "sequence_length": 100, "n_symbols": 12, "base_length": 20, "mask_ratio": 0.2}, # input dim = 13, output dim = 12
+    },
+    'continue_pattern_completion': {
+        'generator': generate_continue_pattern_completion,
+        'is_classification': False,
+        'generator_params': {"n_samples": 1000, "sequence_length": 100, "base_length": 10, "mask_ratio": 0.2}, # input dim = 1, output dim = 1
     },
     'copy_task': {
         'generator': generate_copy_task,
@@ -21,6 +44,7 @@ evaluation = {
         'is_classification': True,
         'generator_params': {"n_samples": 1000, "sequence_length": 100, "delay": 10, "n_markers": 20, "n_symbols": 10}, # input dim = 12, output dim = 10
     },
+    # Tests de manipulation de l'information retenue
     'adding_problem': {
         'generator': generate_adding_problem,
         'is_classification': True,
@@ -36,29 +60,9 @@ evaluation = {
         'is_classification': True,
         'generator_params': {"n_samples": 1000, "path": "datasets/mnist"}, # input dim = 29, output dim = 10
     },
-    'discrete_pattern_completion': {
-        'generator': generate_discrete_pattern_completion,
-        'is_classification': True,
-        'generator_params': {"n_samples": 1000, "sequence_length": 100, "n_symbols": 12, "base_length": 20, "mask_ratio": 0.2}, # input dim = 13, output dim = 12
-    },
-    'continue_pattern_completion': {
-        'generator': generate_continue_pattern_completion,
-        'is_classification': False,
-        'generator_params': {"n_samples": 1000, "sequence_length": 100, "base_length": 10, "mask_ratio": 0.2}, # input dim = 1, output dim = 1
-    },
     'bracket_matching': {
         'generator': generate_bracket_matching,
         'is_classification': True,
         'generator_params': {"n_samples": 1000, "sequence_length": 200, "max_depth": 20}, # input dim = 3, output dim = 1
-    },
-    'sin_forecasting': {
-        'generator': generate_sin_forecasting,
-        'is_classification': False,
-        'generator_params': {"sequence_length": 1000, "forecast_length": 10}, # input dim = 1, output dim = 1
-    },
-    'chaotic_forecasting': {
-        'generator': generate_chaotic_forecasting,
-        'is_classification': False,
-        'generator_params': {"sequence_length": 1000, "forecast_length": 10}, # input dim = 3, output dim = 3
     },
 }

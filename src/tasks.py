@@ -102,6 +102,205 @@ def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio
     
     return X_train, Y_train, X_test, Y_test, prediction_start
 
+
+# ------------ TEST DE TRAITEMENT DU SIGNAL ------------ #
+
+def generate_sin_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
+    """
+    [Unique sequence]
+    Génère un signal sinusoïdal modulé en fréquence.
+    Le modèle doit prédire la fréquence du signal à l'instant suivant.
+
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - forecast_length (int): longueur de la prédiction
+    - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
+
+    Return:
+    - X_train (1, training_sequence, 1)
+    - Y_train (1, training_sequence, 1)
+    - X_test (1, testing_sequence, 1)
+    - Y_test (1, testing_sequence, 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
+    """
+    # Generate the signal
+    length = sequence_length + forecast_length
+    max_value = length / 100
+    t = np.linspace(0, max_value, length)
+    carrier_freq = 10
+    modulator_freq = 0.5
+    modulator = np.sin(2 * np.pi * modulator_freq * t)
+    carrier = np.sin(2 * np.pi * carrier_freq * t + modulator)
+
+    # Create the input & target
+    input = carrier[:-forecast_length].reshape(1, -1, 1)
+    target = carrier[forecast_length:].reshape(1, -1, 1)
+
+    # Split the data into training and testing set
+    training_size = int(sequence_length * training_ratio)
+    X_train = input[:, :training_size, :]
+    Y_train = target[:, :training_size, :]
+    X_test = input[:, training_size:, :]
+    Y_test = target[:, training_size:, :]
+
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
+
+def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
+    """
+    [Unique sequence]
+    Génère une série temporelle chaotique (système de Lorenz).
+    Le modèle doit prédire l'état du système à l'instant suivant.
+
+    Args:
+    - sequence_length (int): longueur de la séquence
+    - forecast_length (int): longueur de la prédiction
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
+
+    Return:
+    - X_train (1, training_sequence, 3)
+    - Y_train (1, training_sequence, 3)
+    - X_test (1, testing_sequence, 3)
+    - Y_test (1, testing_sequence, 3)
+    - prediction_start (int): the timestep at which the model should begin making predictions
+    """
+    # Define the Lorenz system
+    def lorenz(x, y, z, s=10, r=28, b=2.667):
+        dx = s * (y - x)
+        dy = r * x - y - x * z
+        dz = x * y - b * z
+        return dx, dy, dz
+    
+    # Generate the Lorenz system
+    dt = 0.01
+    stepCnt = sequence_length + forecast_length
+    
+    xs = np.zeros(stepCnt)
+    ys = np.zeros(stepCnt)
+    zs = np.zeros(stepCnt)
+    
+    xs[0], ys[0], zs[0] = (0., 1., 1.05)
+    
+    for i in range(stepCnt-1):
+        dx, dy, dz = lorenz(xs[i], ys[i], zs[i])
+        xs[i + 1] = xs[i] + (dx * dt)
+        ys[i + 1] = ys[i] + (dy * dt)
+        zs[i + 1] = zs[i] + (dz * dt)
+
+    # Create the input & target
+    input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length])).reshape(1, -1, 3)
+    target = np.column_stack((xs[forecast_length:], ys[forecast_length:], zs[forecast_length:])).reshape(1, -1, 3)
+
+    # Split the data into training and testing set
+    training_size = int(sequence_length * training_ratio)
+    X_train = input[:, :training_size, :]
+    Y_train = target[:, :training_size, :]
+    X_test = input[:, training_size:, :]
+    Y_test = target[:, training_size:, :]
+
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
+
+# ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
+
+def generate_discrete_pattern_completion(n_samples=1000, sequence_length=1000, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
+    """
+    [Multi sequence]
+    Le modèle doit identifier et compléter des motifs répétitifs.
+    La sequence consiste à répéter un motif de longueur base_length et de dimension n_symbols + 1.
+    Le premier symbole est un marqueur indiquant quand le modèle doit prédire le motif.
+    Les autres symboles sont des éléments du motif.
+
+    Args:
+    - n_samples (int): nombre d'échantillons
+    - sequence_length (int): longueur de la séquence
+    - n_symbols (int): nombre de symboles possibles
+    - base_length (int): longueur du motif
+    - mask_ratio (float): proportion de masquer un symbole
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
+
+    Return:
+    - X_train (training_samples, sequence, n_symbols + marker)
+    - Y_train (training_samples, sequence, n_symbols)
+    - X_test (testing_samples, sequence, n_symbols + marker)
+    - Y_test (testing_samples, sequence, n_symbols)
+    - prediction_start (int): the timestep at which the model should begin making predictions
+    """
+    def generate_one_sample():
+        # Generate a base pattern
+        base_pattern = np.random.randint(0, n_symbols, size=base_length)
+        sequence = np.tile(base_pattern, sequence_length // base_length + 1)[:sequence_length]
+
+        # Mask some parts so that the model predicts them
+        nb_masked = int(sequence_length * mask_ratio)
+        mask = np.random.choice(sequence_length, nb_masked, replace=False)
+        masked_sequence = sequence.copy()
+        masked_sequence[mask] = n_symbols
+
+        # One-hot encoding
+        input = np.eye(n_symbols+1)[masked_sequence]
+        target = np.eye(n_symbols)[sequence]
+
+        return input, target
+
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
+
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
+
+def generate_continue_pattern_completion(n_samples=1000, sequence_length=100, base_length=5, mask_ratio=0.2, training_ratio=0.8):
+    """
+    [Multi sequence]
+    Le modèle doit identifier et compléter des motifs répétitifs.
+    La sequence consiste à répéter un motif de longueur base_length et de dimension 1.
+    Certaines valeurs de la séquence sont masquées par la valeur -1 et le modèle doit les prédire.
+
+    Args:
+    - n_samples (int): nombre d'échantillons
+    - sequence_length (int): longueur de la séquence
+    - base_length (int): longueur du motif
+    - mask_ratio (float): proportion de symboles masqués
+    - training_ratio (float): proportion de sample utilisée pour l'entraînement
+
+    Return:
+    - X_train (training_samples, sequence, 1)
+    - Y_train (training_samples, sequence, 1)
+    - X_test (testing_samples, sequence, 1)
+    - Y_test (testing_samples, sequence, 1)
+    - prediction_start (int): the timestep at which the model should begin making predictions
+    """
+    def generate_one_sample():
+        # Generate a base pattern
+        base_pattern = np.random.uniform(0, 1, size=base_length)
+        sequence = np.tile(base_pattern, sequence_length // base_length + 1)[:sequence_length]
+
+        # Mask some parts so that the model predicts them
+        nb_masked = int(sequence_length * mask_ratio)
+        mask = np.random.choice(sequence_length, nb_masked, replace=False)
+        masked_sequence = sequence.copy()
+        masked_sequence[mask] = -1
+
+        # One-hot encoding
+        input = masked_sequence.reshape(-1, 1)
+        target = sequence.reshape(-1, 1)
+
+        return input, target
+
+    # Generate the samples
+    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
+
+    # Prediction start
+    prediction_start = 0
+
+    return X_train, Y_train, X_test, Y_test, prediction_start
+
 def generate_copy_task(n_samples=1000, sequence_length=100, delay=10, n_symbols=8, training_ratio=0.8):
     """
     [Multi sequence]
@@ -193,10 +392,6 @@ def generate_selective_copy_task(n_samples=1000, sequence_length=100, delay=2, n
     prediction_start = sequence_length + delay + 1
 
     return X_train, Y_train, X_test, Y_test, prediction_start
-
-
-
-
 
 # ------------ TEST DE MANIPULATION DE L'INFORMATION RETENUE ------------ #
 
@@ -343,106 +538,6 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None)
 
     return X_train, Y_train, X_test, Y_test, prediction_start
 
-#def generate_adding_mnist(n_samples=1000, training_ratio=0.8):
-#    pass
-
-
-# ------------ TEST DE DEPENDANCE À LONG TERME ------------ #
-
-def generate_discrete_pattern_completion(n_samples=1000, sequence_length=1000, n_symbols=8, base_length=5, mask_ratio=0.2, training_ratio=0.8):
-    """
-    [Multi sequence]
-    Le modèle doit identifier et compléter des motifs répétitifs.
-    La sequence consiste à répéter un motif de longueur base_length et de dimension n_symbols + 1.
-    Le premier symbole est un marqueur indiquant quand le modèle doit prédire le motif.
-    Les autres symboles sont des éléments du motif.
-
-    Args:
-    - n_samples (int): nombre d'échantillons
-    - sequence_length (int): longueur de la séquence
-    - n_symbols (int): nombre de symboles possibles
-    - base_length (int): longueur du motif
-    - mask_ratio (float): proportion de masquer un symbole
-    - training_ratio (float): proportion de sample utilisée pour l'entraînement
-
-    Return:
-    - X_train (training_samples, sequence, n_symbols + marker)
-    - Y_train (training_samples, sequence, n_symbols)
-    - X_test (testing_samples, sequence, n_symbols + marker)
-    - Y_test (testing_samples, sequence, n_symbols)
-    - prediction_start (int): the timestep at which the model should begin making predictions
-    """
-    def generate_one_sample():
-        # Generate a base pattern
-        base_pattern = np.random.randint(0, n_symbols, size=base_length)
-        sequence = np.tile(base_pattern, sequence_length // base_length + 1)[:sequence_length]
-
-        # Mask some parts so that the model predicts them
-        nb_masked = int(sequence_length * mask_ratio)
-        mask = np.random.choice(sequence_length, nb_masked, replace=False)
-        masked_sequence = sequence.copy()
-        masked_sequence[mask] = n_symbols
-
-        # One-hot encoding
-        input = np.eye(n_symbols+1)[masked_sequence]
-        target = np.eye(n_symbols)[sequence]
-
-        return input, target
-
-    # Generate the samples
-    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
-
-    # Prediction start
-    prediction_start = 0
-
-    return X_train, Y_train, X_test, Y_test, prediction_start
-
-def generate_continue_pattern_completion(n_samples=1000, sequence_length=100, base_length=5, mask_ratio=0.2, training_ratio=0.8):
-    """
-    [Multi sequence]
-    Le modèle doit identifier et compléter des motifs répétitifs.
-    La sequence consiste à répéter un motif de longueur base_length et de dimension 1.
-    Certaines valeurs de la séquence sont masquées par la valeur -1 et le modèle doit les prédire.
-
-    Args:
-    - n_samples (int): nombre d'échantillons
-    - sequence_length (int): longueur de la séquence
-    - base_length (int): longueur du motif
-    - mask_ratio (float): proportion de symboles masqués
-    - training_ratio (float): proportion de sample utilisée pour l'entraînement
-
-    Return:
-    - X_train (training_samples, sequence, 1)
-    - Y_train (training_samples, sequence, 1)
-    - X_test (testing_samples, sequence, 1)
-    - Y_test (testing_samples, sequence, 1)
-    - prediction_start (int): the timestep at which the model should begin making predictions
-    """
-    def generate_one_sample():
-        # Generate a base pattern
-        base_pattern = np.random.uniform(0, 1, size=base_length)
-        sequence = np.tile(base_pattern, sequence_length // base_length + 1)[:sequence_length]
-
-        # Mask some parts so that the model predicts them
-        nb_masked = int(sequence_length * mask_ratio)
-        mask = np.random.choice(sequence_length, nb_masked, replace=False)
-        masked_sequence = sequence.copy()
-        masked_sequence[mask] = -1
-
-        # One-hot encoding
-        input = masked_sequence.reshape(-1, 1)
-        target = sequence.reshape(-1, 1)
-
-        return input, target
-
-    # Generate the samples
-    X_train, Y_train, X_test, Y_test = _generate_train_test_samples(n_samples, training_ratio, generate_one_sample)
-
-    # Prediction start
-    prediction_start = 0
-
-    return X_train, Y_train, X_test, Y_test, prediction_start
-
 def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, training_ratio=0.8):
     """
     [Multi sequence]
@@ -528,104 +623,4 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, 
 
 
 
-# ------------ TEST DE TRAITEMENT DU SIGNAL ------------ #
 
-def generate_sin_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
-    """
-    [Unique sequence]
-    Génère un signal sinusoïdal modulé en fréquence.
-    Le modèle doit prédire la fréquence du signal à l'instant suivant.
-
-    Args:
-    - sequence_length (int): longueur de la séquence
-    - forecast_length (int): longueur de la prédiction
-    - training_ratio (float): proportion de la séquence utilisée pour l'entraînement
-
-    Return:
-    - X_train (1, training_sequence, 1)
-    - Y_train (1, training_sequence, 1)
-    - X_test (1, testing_sequence, 1)
-    - Y_test (1, testing_sequence, 1)
-    - prediction_start (int): the timestep at which the model should begin making predictions
-    """
-    # Generate the signal
-    length = sequence_length + forecast_length
-    max_value = length / 100
-    t = np.linspace(0, max_value, length)
-    carrier_freq = 10
-    modulator_freq = 0.5
-    modulator = np.sin(2 * np.pi * modulator_freq * t)
-    carrier = np.sin(2 * np.pi * carrier_freq * t + modulator)
-
-    # Create the input & target
-    input = carrier[:-forecast_length].reshape(1, -1, 1)
-    target = carrier[forecast_length:].reshape(1, -1, 1)
-
-    # Split the data into training and testing set
-    training_size = int(sequence_length * training_ratio)
-    X_train = input[:, :training_size, :]
-    Y_train = target[:, :training_size, :]
-    X_test = input[:, training_size:, :]
-    Y_test = target[:, training_size:, :]
-
-    # Prediction start
-    prediction_start = 0
-
-    return X_train, Y_train, X_test, Y_test, prediction_start
-
-def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, training_ratio=0.8):
-    """
-    [Unique sequence]
-    Génère une série temporelle chaotique (système de Lorenz).
-    Le modèle doit prédire l'état du système à l'instant suivant.
-
-    Args:
-    - sequence_length (int): longueur de la séquence
-    - forecast_length (int): longueur de la prédiction
-    - training_ratio (float): proportion de sample utilisée pour l'entraînement
-
-    Return:
-    - X_train (1, training_sequence, 3)
-    - Y_train (1, training_sequence, 3)
-    - X_test (1, testing_sequence, 3)
-    - Y_test (1, testing_sequence, 3)
-    - prediction_start (int): the timestep at which the model should begin making predictions
-    """
-    # Define the Lorenz system
-    def lorenz(x, y, z, s=10, r=28, b=2.667):
-        dx = s * (y - x)
-        dy = r * x - y - x * z
-        dz = x * y - b * z
-        return dx, dy, dz
-    
-    # Generate the Lorenz system
-    dt = 0.01
-    stepCnt = sequence_length + forecast_length
-    
-    xs = np.zeros(stepCnt)
-    ys = np.zeros(stepCnt)
-    zs = np.zeros(stepCnt)
-    
-    xs[0], ys[0], zs[0] = (0., 1., 1.05)
-    
-    for i in range(stepCnt-1):
-        dx, dy, dz = lorenz(xs[i], ys[i], zs[i])
-        xs[i + 1] = xs[i] + (dx * dt)
-        ys[i + 1] = ys[i] + (dy * dt)
-        zs[i + 1] = zs[i] + (dz * dt)
-
-    # Create the input & target
-    input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length])).reshape(1, -1, 3)
-    target = np.column_stack((xs[forecast_length:], ys[forecast_length:], zs[forecast_length:])).reshape(1, -1, 3)
-
-    # Split the data into training and testing set
-    training_size = int(sequence_length * training_ratio)
-    X_train = input[:, :training_size, :]
-    Y_train = target[:, :training_size, :]
-    X_test = input[:, training_size:, :]
-    Y_test = target[:, training_size:, :]
-
-    # Prediction start
-    prediction_start = 0
-
-    return X_train, Y_train, X_test, Y_test, prediction_start
