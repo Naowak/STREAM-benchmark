@@ -78,6 +78,7 @@ You can also find the `.csv` files containing the results for each task in the `
 - `--nb_seeds` (default: `1`): Number of random seeds for statistical significance
 - `--report` (default: `True`): Whether to generate a detailed report (default: True)
 - `--tasks` (default: `all`): Specific task to evaluate ('all' for all tasks, 'none' for no tasks), you can specify multiple tasks by separating them with commas spaces ' ' (e.g. `--tasks discrete_postcasting continue_postcasting`)
+- `--device` (default: `none`): If the model is GPU compatible, specify the device to use (e.g. `--device cuda`). This value will be add to the args of the model as `device`.
 
 #### List of available models:
 - `ESN`

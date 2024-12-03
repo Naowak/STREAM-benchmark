@@ -69,6 +69,7 @@ def parse_args():
     parser.add_argument("--n_seeds", type=int, default=1)
     parser.add_argument("--tasks", type=str, default="all", choices=['all', 'none'] + list(evaluation.keys()), nargs='+')
     parser.add_argument("--report", type=bool, default=True)
+    parser.add_argument("--device", type=str, default="")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -86,6 +87,10 @@ if __name__ == "__main__":
     # Args pour le modèle et l'entraînement
     model_args = MODELS[args.model]['args']
     training_args = MODELS[args.model]['training_args']
+
+    # Add device if specified
+    if args.device:
+        model_args['device'] = args.device
 
     # Ajout des tâches
     if args.tasks == 'all':
