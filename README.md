@@ -151,13 +151,13 @@ MODELS = {
             "layers": [1, 20], # Randomly choose an integer between 1 and 20
             "learning_rate": [0.0001, 0.1], # Randomly choose a float between 0.0001 and 0.1
             "hidden_size": (64, 128, 256), # Randomly choose a value between 64, 128 and 256
-            "dropout": 0.2 # Fix the dropout to 0.2
-            "activation": ("relu", "tanh") # Randomly choose between "relu" and "tanh"
+            "dropout": 0.2, # Fix the dropout to 0.2
+            "activation": ("relu", "tanh"), # Randomly choose between "relu" and "tanh"
         },
         'training_args': {
             # Your model's training args
             "epochs": 10,
-            "batch_size": 32
+            "batch_size": 32,
         },
     },
     # ... other models
