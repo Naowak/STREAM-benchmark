@@ -41,8 +41,8 @@ evaluation = {
         'is_classification': True,
         'generator_params': {"n_samples": 1000, "sequence_length": 100, "n_symbols": 12, "base_length": 20, "mask_ratio": 0.2}, # input dim = 13, output dim = 12
     },
-    'continuous_pattern_completion': {
-        'generator': generate_continuous_pattern_completion,
+    'continue_pattern_completion': {
+        'generator': generate_continue_pattern_completion,
         'is_classification': False,
         'generator_params': {"n_samples": 1000, "sequence_length": 100, "base_length": 10, "mask_ratio": 0.2}, # input dim = 1, output dim = 1
     },

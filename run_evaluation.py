@@ -67,7 +67,7 @@ def parse_args():
     parser.add_argument("--model", type=str, default="ESN", choices=MODELS.keys())
     parser.add_argument("--n_trials", type=int, default=1)
     parser.add_argument("--n_seeds", type=int, default=1)
-    parser.add_argument("--task", type=str, default="all", choices=['all', 'none'] + list(evaluation.keys()))
+    parser.add_argument("--tasks", type=str, default="all", choices=['all', 'none'] + list(evaluation.keys()), nargs='+')
     parser.add_argument("--report", type=bool, default=True)
     return parser.parse_args()
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     training_args = MODELS[args.model]['training_args']
 
     # Ajout des tâches
-    if args.task == 'all':
+    if args.tasks == 'all':
         # Ajout de toutes les taches
         for task_name, task_params in evaluation.items():
             benchmark.add_task(Task(
@@ -100,21 +100,26 @@ if __name__ == "__main__":
                 training_args=training_args,
                 n_trials=args.n_trials
             ))
-    elif args.task == 'none':
+    elif args.tasks == 'none':
         # Aucune tâche spécifiée
         pass
-    elif type(args.task) == str:
-        # Ajout de la tache spécifiée
-        task_params = evaluation[args.task]
-        benchmark.add_task(Task(
-            name=args.task,
-            generator=task_params['generator'],
-            is_classification=task_params['is_classification'],
-            model_args=model_args,
-            generator_params=task_params['generator_params'],
-            training_args=training_args,
-            n_trials=args.n_trials
-        ))
+    elif type(args.tasks) == list:
+        # Ajout des tâches spécifiées
+        if 'all' in args.tasks and len(args.tasks) > 1:
+            raise ValueError("'all' cannot be combined with other tasks.")
+        if 'none' in args.tasks and len(args.tasks) > 1:
+            raise ValueError("'none' cannot be combined with other tasks.")
+        for task_name in args.tasks:
+            task_params = evaluation[task_name]
+            benchmark.add_task(Task(
+                name=task_name,
+                generator=task_params['generator'],
+                is_classification=task_params['is_classification'],
+                model_args=model_args,
+                generator_params=task_params['generator_params'],
+                training_args=training_args,
+                n_trials=args.n_trials
+            ))
     else:
         raise ValueError("Invalid task name")
     

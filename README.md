@@ -17,7 +17,7 @@ The benchmark includes three main categories of tasks:
 
 ### 1. Simple Memory Tests
 - **Discrete Postcasting**: Copy a discrete sequence after a delay
-- **Continuous Postcasting**: Copy a continuous sequence after a delay
+- **Continue Postcasting**: Copy a continue sequence after a delay
 - **Copy Task**: Memorize and reproduce a sequence when triggered
 - **Selective Copy**: Memorize and reproduce only marked elements
 - **MNIST Classification**: Process MNIST images sequentially and classify them
@@ -28,7 +28,7 @@ The benchmark includes three main categories of tasks:
 
 ### 3. Long-Term Dependency Tests
 - **Discrete Pattern Completion**: Identify and complete repetitive discrete patterns
-- **Continuous Pattern Completion**: Identify and complete repetitive continuous patterns
+- **Continue Pattern Completion**: Identify and complete repetitive continue patterns
 - **Bracket Matching**: Validate nested bracket sequences
 
 ### 4. Signal Processing Tests
@@ -64,7 +64,7 @@ python run_evaluation.py --model ESN --task discrete_postcasting --n_trials 5
 - `--model`: Model architecture to evaluate (ESN, LSTM, Transformers, TransformerDecoderOnly)
 - `--n_trials`: Number of optimization trials for each task
 - `--nb_seeds`: Number of random seeds for statistical significance
-- `--task`: Specific task to evaluate ('all' for all tasks)
+- `--tasks`: Specific task to evaluate ('all' for all tasks, 'none' for no tasks), you can specify multiple tasks by separating them with commas ',' (default: 'all')
 - `--report`: Whether to generate a detailed report (default: True)
 
 ## 📊 Evaluating Your Own Model
@@ -130,7 +130,7 @@ results/
 │   ├── hyperparameter_analysis.png
 │   ├── learning_curves/
 │   │   ├── discrete_postcasting.png
-│   │   ├── continuous_postcasting.png
+│   │   ├── continue_postcasting.png
 │   │   └── ...
 │   └── report.pdf
 ```

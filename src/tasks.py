@@ -68,7 +68,7 @@ def generate_continue_postcasting(sequence_length=1000, delay=10, training_ratio
     """
     [Unique sequence]
     Génère une tâche de copie : le modèle doit reproduire la séquence d'entrée 
-    (continuous) après un délai.
+    (continue) après un délai.
 
     Args:
     - sequence_length (int): longueur de la séquence
@@ -397,7 +397,7 @@ def generate_discrete_pattern_completion(n_samples=1000, sequence_length=1000, n
 
     return X_train, Y_train, X_test, Y_test, prediction_start
 
-def generate_continuous_pattern_completion(n_samples=1000, sequence_length=100, base_length=5, mask_ratio=0.2, training_ratio=0.8):
+def generate_continue_pattern_completion(n_samples=1000, sequence_length=100, base_length=5, mask_ratio=0.2, training_ratio=0.8):
     """
     [Multi sequence]
     Le modèle doit identifier et compléter des motifs répétitifs.
