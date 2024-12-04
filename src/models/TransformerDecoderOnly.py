@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
 
 class TransformerDecoderOnly(nn.Module):
     def __init__(self, d_model=128, nhead=8, num_layers=6, dim_feedforward=512, dropout=0.1, learning_rate=1e-3, device='cpu'):
@@ -99,7 +100,7 @@ class TransformerDecoderOnly(nn.Module):
             emb_X = self.fc_in(X)
             tr_output = self.transformer(src=emb_X, mask=mask_seq)
             output = self.fc_out(tr_output)
-        return output
+        return output.cpu().numpy()
 
     def count_params(self):
         """

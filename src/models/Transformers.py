@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
 
 class Transformers(nn.Module):
     def __init__(self, d_model=128, nhead=8, num_encoder_layers=2, num_decoder_layers=2, dim_feedforward=512, dropout=0.1, learning_rate=1e-3, device='cpu'):
@@ -128,7 +129,7 @@ class Transformers(nn.Module):
                 # Append the predictions
                 Y_preds.append(Y_batch)
             
-        return torch.cat(Y_preds, dim=0)
+        return torch.cat(Y_preds, dim=0).cpu().numpy()
 
     def count_params(self):
         """
