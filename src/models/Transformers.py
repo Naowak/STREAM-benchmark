@@ -128,6 +128,10 @@ class Transformers(nn.Module):
                 
                 # Append the predictions
                 Y_preds.append(Y_batch)
+
+        with open('y_torch.txt', 'w') as f:
+            for item in Y_preds:
+                f.write("%s\n" % item)
             
         return torch.cat(Y_preds, dim=0).cpu().numpy()
 
