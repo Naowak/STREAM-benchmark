@@ -63,7 +63,8 @@ class Transformers(nn.Module):
         dataset = TensorDataset(X, Y)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         
-        # Générer les masques de séquence
+        # Générer les masques
+        mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
         mask_seq_dec = self._generate_sequence_mask(Y.shape[1], mask_current=True)
 
@@ -76,7 +77,7 @@ class Transformers(nn.Module):
                 # Forward pass
                 emb_X = self.fc_in_encoder(X_batch)
                 emb_Y = self.fc_in_decoder(Y_batch)       
-                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)
+                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
                 output = self.fc_out(tr_output)
 
                 # Calculer la perte
@@ -104,7 +105,7 @@ class Transformers(nn.Module):
         dataset = TensorDataset(X)
         dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-        # Générer les masques de séquence
+        # Générer les masques 
         mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
         mask_seq_dec = self._generate_sequence_mask(X.shape[1], mask_current=True)
@@ -128,10 +129,6 @@ class Transformers(nn.Module):
                 
                 # Append the predictions
                 Y_preds.append(Y_batch)
-
-        with open('y_torch.txt', 'w') as f:
-            for item in Y_preds:
-                f.write("%s\n" % item)
             
         return torch.cat(Y_preds, dim=0).cpu().numpy()
 

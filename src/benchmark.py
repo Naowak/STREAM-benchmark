@@ -308,11 +308,6 @@ class Benchmark:
         y_true = np.array(y_true)[:, prediction_start:, :].flatten()
         y_pred = np.array(y_pred)[:, prediction_start:, :].flatten()
 
-        with open('y_true.txt', 'w') as f:
-            f.write(str(y_true))
-        with open('y_pred.txt', 'w') as f:
-            f.write(str(y_pred))
-
         if is_classification:
             # Convert to class indices if needed
             y_true_bool = (y_true > 0.5).astype(int)
