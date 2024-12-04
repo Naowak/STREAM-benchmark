@@ -155,4 +155,4 @@ class TransformerDecoderOnly(nn.Module):
         """
         mask = (torch.triu(torch.ones(length, length)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask
+        return mask.to(self.device)

@@ -188,6 +188,7 @@ class Transformers(nn.Module):
             length += 1
         mask = (torch.triu(torch.ones(length, length)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        mask = mask.to(self.device)
         return mask if not mask_current else mask[:-1, 1:]
     
     def _generate_memory_mask(self, src_len, tgt_len):
@@ -204,7 +205,7 @@ class Transformers(nn.Module):
         mask = torch.ones(tgt_len, src_len)
         for i in range(tgt_len):
             mask[i, i+1:] = float('-inf')
-        return mask
+        return mask.to(self.device)
 
 
 
