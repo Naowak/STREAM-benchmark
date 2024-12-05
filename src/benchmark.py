@@ -1,5 +1,5 @@
 from typing import Dict, Any, Callable, List, Tuple, Optional
-from sklearn.metrics import accuracy_score, root_mean_squared_error, precision_score, recall_score
+from sklearn.metrics import accuracy_score, mean_squared_error, precision_score, recall_score
 from src.report_templates import classification_task_template, regression_task_template
 from src.evaluation import evaluation
 from dataclasses import dataclass
@@ -305,8 +305,8 @@ class Benchmark:
         - Dict[str, float] : Mesures de performance.
         """
         # Flatten arrays
-        y_true = np.array(y_true)[:, prediction_start:, :].flatten()
-        y_pred = np.array(y_pred)[:, prediction_start:, :].flatten()
+        y_true = np.array(y_true)[:, prediction_start:, :].reshape(-1, y_true.shape[-1])
+        y_pred = np.array(y_pred)[:, prediction_start:, :].reshape(-1, y_pred.shape[-1])
 
         if is_classification:
             # Convert to class indices if needed
@@ -325,7 +325,7 @@ class Benchmark:
                 'accuracy': None,  # Non applicable pour la régression
                 'precision': None,
                 'recall': None,
-                'mse': root_mean_squared_error(y_true, y_pred),
+                'mse': mean_squared_error(y_true, y_pred),
                 'bic': self._compute_bic(y_true, y_pred, n_params, is_classification)
             }
         

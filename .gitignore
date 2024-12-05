@@ -3,6 +3,7 @@ stream-venv/
 stream_venv/
 results/
 datasets/
+slurms/
 
 
 # Byte-compiled / optimized / DLL files
