@@ -509,8 +509,8 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None)
     """
     # Load MNIST data
     dataset = load_from_disk(path) if path else load_dataset("mnist")
-    X = np.concat([np.array(dataset['train']['image']), np.array(dataset['test']['image'])]).transpose(0, 2, 1) # so we can read it column by column
-    Y = np.concat([np.array(dataset['train']['label']), np.array(dataset['test']['label'])])
+    X = np.concatenate([np.array(dataset['train']['image']), np.array(dataset['test']['image'])]).transpose(0, 2, 1) # so we can read it column by column
+    Y = np.concatenate([np.array(dataset['train']['label']), np.array(dataset['test']['label'])])
     
     # Shuffle and select the samples
     shuffle = np.random.permutation(X.shape[0])[:n_samples]
