@@ -109,11 +109,19 @@ if __name__ == "__main__":
         # Aucune tâche spécifiée
         pass
     elif type(args.tasks) == list:
-        # Ajout des tâches spécifiées
+        # Check if 'all' or 'none' are combined with other tasks
         if 'all' in args.tasks and len(args.tasks) > 1:
             raise ValueError("'all' cannot be combined with other tasks.")
         if 'none' in args.tasks and len(args.tasks) > 1:
             raise ValueError("'none' cannot be combined with other tasks.")
+        
+        # If 'all' or 'none' are specified, replace them with the corresponding list
+        if 'all' in args.tasks:
+            args.tasks = list(evaluation.keys())
+        if 'none' in args.tasks:
+            args.tasks = []
+
+        # Ajout des tâches spécifiées
         for task_name in args.tasks:
             task_params = evaluation[task_name]
             benchmark.add_task(Task(
