@@ -28,11 +28,29 @@ The benchmark includes the following tasks:
 
 ## 📊 Baseline Results
 
-| Model | Copy | Adding | Sorting | Pattern | Bracket | Signal |
-|-------|------|--------|---------|---------|---------|--------|
-| ESN   | 0.95 | 0.89   | 0.82    | 0.88    | 0.85    | 0.91   |
-| LSTM  | 0.98 | 0.93   | 0.87    | 0.92    | 0.89    | 0.94   |
-| Trans.| 0.99 | 0.95   | 0.91    | 0.94    | 0.92    | 0.96   |
+| Tasks | ESN | LSTM | Transformers | Transformer-Decoder |
+| --- | --- | --- | --- | --- | 
+| **Mémoire simple** | | | | |
+| Discrete Postcasting (↗) | **0.042** | 0.005 | ? | 0.010 |
+| Continue Postcasting (↘) | 0.008 | 0.105 | ? | **0.202** |
+| | | | | |
+| **Traitement du signal** | | | | |
+| Sin Forecasting (↘) | **0.011** | 0.024 | ? | 0.030 |
+| Chaotic Forecasting (↘) | **40.5** | 161.4 | ? | 191.7 |
+| | | | | |
+| **Dépendances à logn terme** | | | | |
+| Discrete Pattern Completion (↗) | **0.800** | 0.790 | ? | **0.800** |
+| Continue Pattern Completion (↘) | 0.014 | **0.002** | ? | 0.015 |
+| Copy Task (↗) | 0.000 | **0.108** | ? | 0.104 |
+| Selective Copy (↗) | 0.001 | 0.100 | ? | **0.109** |
+| | | | | |
+| **Manipulation de l'information retenue** | | | | |
+| Adding Problem (↗) | **0.020** | 0.000 | ? | 0.000 |
+| Sorting Problem (↗) | 0.001 | 0.097 | ? | **0.108** |
+| MNIST Classification (↗) | **0.640** | 0.000 | ? | 0.090 |
+| Bracket Matching (↗) | **0.825** | 0.570 | ? | 0.570 |
+
+
 
 ## 🚀 Getting Started
 
