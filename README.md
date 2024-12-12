@@ -8,23 +8,35 @@ The benchmark includes the following tasks:
 
 ### 1. Simple Memory Tests
 - **Discrete Postcasting**: Copy a discrete sequence after a delay
+![Discrete Pattern Completion](./images/discrete_pattern_completion.png)
 - **Continue Postcasting**: Copy a continue sequence after a delay
+![Continue Pattern Completion](./images/continue_pattern_completion.png)
 
 ### 2. Signal Processing Tests
 - **Sin Forecasting**: Predict frequency-modulated sinusoidal signals
+![Sin Forecasting](./images/sin_forecasting.png)
 - **Chaotic Forecasting**: Predict states in a chaotic system (Lorenz attractor)
+![Chaotic Forecasting](./images/chaotic_forecasting.png)
 
 ### 3. Long-Term Dependency Tests
 - **Discrete Pattern Completion**: Identify and complete repetitive discrete patterns
+![Discrete Pattern Completion](./images/discrete_pattern_completion.png)
 - **Continue Pattern Completion**: Identify and complete repetitive continue patterns
+![Continue Pattern Completion](./images/continue_pattern_completion.png)
 - **Copy Task**: Memorize and reproduce a sequence when triggered
+![Copy Task](./images/copy_task.png)
 - **Selective Copy**: Memorize and reproduce only marked elements
+![Selective Copy](./images/selective_copy.png)
 
 ### 4. Information Manipulation Tests
 - **Adding Problem**: Add numbers at marked positions in a sequence
+![Adding Problem](./images/adding_problem.png)
 - **Sorting Problem**: Sort a sequence based on given positions
+![Sorting Problem](./images/sorting_problem.png)
 - **MNIST Classification**: Process MNIST images sequentially and classify them
+![MNIST Classification](./images/mnist_classification.png)
 - **Bracket Matching**: Validate nested bracket sequences
+![Bracket Matching](./images/bracket_matching.png)
 
 ## 📊 Baseline Results
 
