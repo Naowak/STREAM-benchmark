@@ -311,13 +311,15 @@ class Benchmark:
         y_pred = np.array(y_pred)
 
         # Select only prediction timesteps
+        truths = []
+        preds = []
         for i in range(y_true.shape[0]):
-            y_true[i] = y_true[i, prediction_timesteps[i], :]
-            y_pred[i] = y_pred[i, prediction_timesteps[i], :]
+            truths += [y_true[i, prediction_timesteps[i], :]]
+            preds += [y_pred[i, prediction_timesteps[i], :]]
 
         # Flatten arrays
-        y_true = y_true.reshape(-1, y_true.shape[-1])
-        y_pred = y_pred.reshape(-1, y_pred.shape[-1])
+        y_true = np.array(truths).reshape(-1, y_true.shape[-1])
+        y_pred = np.array(preds).reshape(-1, y_pred.shape[-1])
 
         if is_classification:
             # Convert to class indices if needed
