@@ -64,7 +64,7 @@ class Transformers(nn.Module):
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         
         # Générer les masques
-        mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
+        mask_memory = self._generate_memory_mask(src_len=X.shape[1], tgt_len=Y.shape[1]+1)
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
         mask_seq_dec = self._generate_sequence_mask(Y.shape[1] + 1)#, mask_current=True)
 
@@ -118,7 +118,7 @@ class Transformers(nn.Module):
         dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
         # Générer les masques 
-        mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
+        mask_memory = self._generate_memory_mask(src_len=X.shape[1], tgt_len=X.shape[1]+1)
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
         mask_seq_dec = self._generate_sequence_mask(X.shape[1] + 1)#, mask_current=True)
 
