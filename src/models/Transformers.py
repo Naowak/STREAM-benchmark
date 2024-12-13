@@ -79,7 +79,7 @@ class Transformers(nn.Module):
                 Y_padd = torch.cat([t_padd, Y_batch], dim=1)
                 emb_X = self.fc_in_encoder(X_batch)
                 emb_Y = self.fc_in_decoder(Y_padd)
-                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
+                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
                 output = self.fc_out(tr_output[:, 1:, :])
 
                 # Select only the prediction timesteps
@@ -138,7 +138,7 @@ class Transformers(nn.Module):
                     t_padd = torch.zeros((Y_batch.shape[0], 1, Y_batch.shape[2]), device=self.device)
                     Y_padd = torch.cat([t_padd, Y_batch], dim=1)
                     emb_Y = self.fc_in_decoder(Y_padd)
-                    tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
+                    tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
                     output = self.fc_out(tr_output[:, 1:, :])
                     Y_batch[:, i, :] = output[:, i, :]
                 
