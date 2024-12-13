@@ -138,14 +138,14 @@ class YourModel():
     def __init__(self, **kwargs):
         # Initialize your model
         
-    def train(self, X, Y, classification=False, prediction_start=0, **kwargs):
+    def train(self, X, Y, classification=False, prediction_timesteps=[], **kwargs):
         # Train your model
         #
         # Parameters :
         # X (np.ndarray) : Input data. (sample, time, input_dim) 
         # Y (np.ndarray) : Output data. (sample, time, output_dim) 
         # classification (bool) : Whether the task is a classification task
-        # prediction_start (int) : The timestep at which the model should start predicting -> the timestep at which you should compute the error between predictions and ground truth (Y)
+        # prediction_timesteps (list of int) : Timesteps at which the model should predict -> timesteps at which you should compute the error between predictions and ground truth (Y)
         
     def run(self, X, **kwargs):
         # Run your model sequentially

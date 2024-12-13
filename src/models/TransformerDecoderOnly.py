@@ -38,7 +38,7 @@ class TransformerDecoderOnly(nn.Module):
         self.optimizer = None
         self.criterion = None
 
-    def train(self, X, Y, epochs=10, batch_size=32, classification=False, prediction_start=0):
+    def train(self, X, Y, epochs=10, batch_size=32, classification=False, prediction_timesteps=[]):
         """
         Entraîne le modèle TransformerDecoderOnly.
 
@@ -48,7 +48,7 @@ class TransformerDecoderOnly(nn.Module):
         - epochs (int) : Nombre d'époques.
         - batch_size (int) : Taille des mini-lots.
         - classification (bool) : Indique si la tâche est une classification.
-        - prediction_start (int) : Indice de début de prédiction.
+        - prediction_timesteps (list) : Liste des indices de temps pour lesquels prédire.
         """
         # Convertir les données en tenseurs PyTorch
         X = torch.tensor(X, dtype=torch.float32, device=self.device)
@@ -68,14 +68,24 @@ class TransformerDecoderOnly(nn.Module):
         self.transformer.train()
 
         for _ in range(epochs):
-            for X_batch, Y_batch in dataloader:
+            for i, (X_batch, Y_batch) in enumerate(dataloader):
                 # Forward pass
                 emb_X = self.fc_in(X_batch)  # Embedding de l'entrée
                 tr_output = self.transformer(src=emb_X, mask=mask_seq)  # Transformer
                 output = self.fc_out(tr_output)  # Projection finale
+                
+                # Select only the prediction timesteps
+                preds = []
+                truths = []
+                for j in range(X_batch.shape[0]):
+                    sample = i*batch_size + j
+                    preds += [output[j, prediction_timesteps[sample], :]]
+                    truths += [Y_batch[j, prediction_timesteps[sample], :]]
+                preds = torch.stack(preds)
+                truths = torch.stack(truths)
 
-                # Calculer la perte
-                loss = self.criterion(output[:, prediction_start:, :], Y_batch[:, prediction_start:, :])
+                # Compute loss
+                loss = self.criterion(preds, truths)
 
                 # Backward pass et mise à jour des poids
                 self.optimizer.zero_grad()

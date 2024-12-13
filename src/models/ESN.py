@@ -25,7 +25,7 @@ class ESN():
         self.readout = None
         self.model = None
     
-    def train(self, X, Y, classification=False, prediction_start=0):
+    def train(self, X, Y, classification=False, prediction_timesteps=[]):
         """
         Entraîne l'ESN sur les données d'entraînement.
         
@@ -43,10 +43,17 @@ class ESN():
             states.append(self.reservoir.run(X[i]))
         states = np.array(states)
 
+        # Get states at prediction timesteps
+        train_states = []
+        train_Y = []
+        for i in range(X.shape[0]):
+            train_states += [states[i, prediction_timesteps[i], :]]
+            train_Y += [Y[i, prediction_timesteps[i], :]]
+        train_states = np.array(train_states)
+        train_Y = np.array(train_Y)
+        
         # Train ridges
         errors = []
-        train_states = states[:, prediction_start:, :]
-        train_Y = Y[:, prediction_start:, :]
         for ridge in self.ridges:
             # Train ridge
             ridge.fit(train_states, train_Y)

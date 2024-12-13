@@ -32,7 +32,7 @@ class LSTM(nn.Module):
         self.optimizer = None
         self.criterion = None
 
-    def train(self, X, Y, epochs=100, batch_size=32, classification=False, prediction_start=0):
+    def train(self, X, Y, epochs=100, batch_size=32, classification=False, prediction_timesteps=[]):
         """
         Entraîne le modèle LSTM.
 
@@ -42,7 +42,7 @@ class LSTM(nn.Module):
         - epochs (int) : Nombre d'époques.
         - batch_size (int) : Taille des mini-lots.
         - classification (bool) : Indique si la tâche est une classification.
-        - prediction_start (int) : Indice de début de prédiction.
+        - prediction_timesteps (list) : Liste des indices de temps pour lesquels prédire.
         """
 
         # Convertir les données en tenseurs PyTorch
@@ -63,7 +63,7 @@ class LSTM(nn.Module):
         # Entraîner le modèle
         self.model.train()
         for _ in range(epochs):
-            for batch_X, batch_Y in dataloader:
+            for i, (batch_X, batch_Y) in enumerate(dataloader):
                 # Initialiser les états cachés
                 h0 = torch.zeros(self.num_layers, batch_X.size(0), self.hidden_size, device=self.device)
                 c0 = torch.zeros(self.num_layers, batch_X.size(0), self.hidden_size, device=self.device)
@@ -72,8 +72,18 @@ class LSTM(nn.Module):
                 outputs, _ = self.model(batch_X, (h0, c0)) # outputs: (batch_size, seq_length, hidden_size)
                 outputs = self.fc(outputs) # outputs: (batch_size, seq_length, output_size) 
 
-                # Calculer la perte
-                loss = self.criterion(outputs[:, prediction_start:, :], batch_Y[:, prediction_start:, :])
+                # Select only the prediction timesteps
+                preds = []
+                truths = []
+                for j in range(batch_X.shape[0]):
+                    sample = i*batch_size + j
+                    preds += [outputs[j, prediction_timesteps[sample], :]]
+                    truths += [batch_Y[j, prediction_timesteps[sample], :]]
+                preds = torch.stack(preds)
+                truths = torch.stack(truths)
+
+                # Compute loss
+                loss = self.criterion(preds, truths)
 
                 # Backward pass et mise à jour des poids
                 self.optimizer.zero_grad()

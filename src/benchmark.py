@@ -104,7 +104,7 @@ class Benchmark:
             
                 # Génération des données
                 try:
-                    X_train, Y_train, X_test, Y_test, prediction_start = task.generator(**(task.generator_params or {}))
+                    X_train, Y_train, T_train, X_test, Y_test, T_test = task.generator(**(task.generator_params or {}))
                 except Exception as e:
                     self.logger.error(f"\033[91mError generating dataset for task {task.name}: {e}\033[0m")
                     continue
@@ -115,7 +115,7 @@ class Benchmark:
                     model_hp = self._select_random_hyperparameters(task)
 
                     # Evaluate model with hyperparameters
-                    self._evaluate_model_with_hp(X_train, Y_train, X_test, Y_test, prediction_start, task, model_hp)
+                    self._evaluate_model_with_hp(X_train, Y_train, T_train, X_test, Y_test, T_test, task, model_hp)
 
                     # Update progress bar
                     progress_bar.update(1)
@@ -233,15 +233,16 @@ class Benchmark:
                 raise ValueError(f"Invalid hyperparameter values for task {task.name}: {hp_values}")
         return model_hp
 
-    def _evaluate_model_with_hp(self, X_train, Y_train, X_test, Y_test, prediction_start, task, model_hp):
+    def _evaluate_model_with_hp(self, X_train, Y_train, T_train, X_test, Y_test, T_test, task, model_hp):
         """Pour chaque tâche du benchmark, évalue un modèle en effectuant une recherche d'hyperparamètres.
         
         Paramètres :
         - X_train : Données d'entraînement.
         - Y_train : Données de sortie d'entraînement.
+        - T_train : Timesteps où le modèle doit prédire.
         - X_test : Données de test.
         - Y_test : Données de sortie de test.
-        - prediction_start : Indice de début de prédiction.
+        - T_test : Timesteps où le modèle doit prédire.
         - task : Tâche à évaluer.
         - model_hp : Hyperparamètres du modèle.
         """
@@ -253,7 +254,7 @@ class Benchmark:
         # Entraînement
         try:
             model = self.model_class(**model_hp)
-            model.train(X_train, Y_train, classification=task.is_classification, prediction_start=prediction_start)
+            model.train(X_train, Y_train, classification=task.is_classification, prediction_timesteps=T_train)
         except Exception as e:
             self.logger.error(f"\033[91mError training model on task {task.name}: {e}\033[0m")
             return
@@ -272,7 +273,7 @@ class Benchmark:
         inference_time = time.time() - start_time
         
         # Evaluation des prédictions
-        metrics = self._evaluate_predictions(Y_test, predictions, prediction_start, model.count_params(), task.is_classification)
+        metrics = self._evaluate_predictions(Y_test, predictions, T_test, model.count_params(), task.is_classification)
         
         # Enregistrement des résultats
         result = TaskResult(
@@ -292,22 +293,31 @@ class Benchmark:
         self._save_task_results(task.name, self.results[task.name])
 
 
-    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, prediction_start: int, n_params: int, is_classification: bool) -> Dict[str, float]:
+    def _evaluate_predictions(self, y_true: np.ndarray, y_pred: np.ndarray, prediction_timesteps: np.ndarray, n_params: int, is_classification: bool) -> Dict[str, float]:
         """Évalue les prédictions selon le type de tâche.
         
         Paramètres :
         - y_true : Données de sortie réelles.
         - y_pred : Données de sortie prédites.
-        - prediction_start : Indice de début de prédiction.
+        - prediction_timesteps : Timesteps où le modèle doit prédire.
         - n_params : Nombre de paramètres du modèle.
         - is_classification : Indique si la tâche est une classification.
         
         Retourne :
         - Dict[str, float] : Mesures de performance.
         """
+        # Convert to numpy arrays
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+
+        # Select only prediction timesteps
+        for i in range(y_true.shape[0]):
+            y_true[i] = y_true[i, prediction_timesteps[i], :]
+            y_pred[i] = y_pred[i, prediction_timesteps[i], :]
+
         # Flatten arrays
-        y_true = np.array(y_true)[:, prediction_start:, :].reshape(-1, y_true.shape[-1])
-        y_pred = np.array(y_pred)[:, prediction_start:, :].reshape(-1, y_pred.shape[-1])
+        y_true = y_true.reshape(-1, y_true.shape[-1])
+        y_pred = y_pred.reshape(-1, y_pred.shape[-1])
 
         if is_classification:
             # Convert to class indices if needed
