@@ -8,9 +8,9 @@ The benchmark includes the following tasks:
 
 ### 1. Simple Memory Tests
 - **Discrete Postcasting**: Copy a discrete sequence after a delay
-![Discrete Pattern Completion](./images/discrete_pattern_completion.png)
+![Discrete Postcasting](./images/discrete_postcasting.png)
 - **Continue Postcasting**: Copy a continue sequence after a delay
-![Continue Pattern Completion](./images/continue_pattern_completion.png)
+![Continue Postcasting](./images/continue_postcasting.png)
 
 ### 2. Signal Processing Tests
 - **Sin Forecasting**: Predict frequency-modulated sinusoidal signals
