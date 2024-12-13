@@ -64,9 +64,9 @@ class Transformers(nn.Module):
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         
         # Générer les masques
-        mask_memory = self._generate_memory_mask(src_len=X.shape[1], tgt_len=Y.shape[1]+1)
+        mask_memory = self._generate_memory_mask(src_len=X.shape[1], tgt_len=Y.shape[1] + 1) # +1 for the first padding
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
-        mask_seq_dec = self._generate_sequence_mask(Y.shape[1] + 1)#, mask_current=True)
+        mask_seq_dec = self._generate_sequence_mask(Y.shape[1] + 1) # +1 for the first padding
 
         # Entraîner le modèle
         self.transformer.train()
@@ -74,13 +74,15 @@ class Transformers(nn.Module):
         # Entraîner le modèle
         for _ in range(epochs):
             for i, (X_batch, Y_batch) in enumerate(dataloader):
-                # Forward pass
+                # Padd Y_batch for the first step (no previous prediction)
                 t_padd = torch.zeros((Y_batch.shape[0], 1, Y_batch.shape[2]), device=self.device)
                 Y_padd = torch.cat([t_padd, Y_batch], dim=1)
+
+                # Forward pass
                 emb_X = self.fc_in_encoder(X_batch)
                 emb_Y = self.fc_in_decoder(Y_padd)
                 tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
-                output = self.fc_out(tr_output[:, 1:, :])
+                output = self.fc_out(tr_output[:, 1:, :]) # Remove the first padding
 
                 # Select only the prediction timesteps
                 preds = []
@@ -118,9 +120,9 @@ class Transformers(nn.Module):
         dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
         # Générer les masques 
-        mask_memory = self._generate_memory_mask(src_len=X.shape[1], tgt_len=X.shape[1]+1)
+        mask_memory = self._generate_memory_mask(src_len=X.shape[1], tgt_len=X.shape[1] + 1) # +1 for the first padding
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
-        mask_seq_dec = self._generate_sequence_mask(X.shape[1] + 1)#, mask_current=True)
+        mask_seq_dec = self._generate_sequence_mask(X.shape[1] + 1) # +1 for the first padding
 
         # Run model
         Y_preds = []
@@ -135,11 +137,16 @@ class Transformers(nn.Module):
 
                 # Iterate over the sequence to predict the next Y step by step
                 for i in range(X_batch.shape[1]):
+                    # Padd Y_batch for the first step (no previous prediction)
                     t_padd = torch.zeros((Y_batch.shape[0], 1, Y_batch.shape[2]), device=self.device)
                     Y_padd = torch.cat([t_padd, Y_batch], dim=1)
+
+                    # Compute the transformer output
                     emb_Y = self.fc_in_decoder(Y_padd)
                     tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
-                    output = self.fc_out(tr_output[:, 1:, :])
+                    output = self.fc_out(tr_output[:, 1:, :]) # Remove the first padding
+
+                    # Update Y_batch
                     Y_batch[:, i, :] = output[:, i, :]
                 
                 # Append the predictions
@@ -190,23 +197,20 @@ class Transformers(nn.Module):
         else:
             self.criterion = nn.MSELoss()
 
-    def _generate_sequence_mask(self, length, mask_current=False):
+    def _generate_sequence_mask(self, length):
         """
         Génère un masque de séquence pour le modèle Transformer.
 
         Paramètres :
         - length (int) : Taille de la séquence.
-        - see_current (bool) : Indique si le modèle peut voir l'élement actuel.
 
         Retourne :
         - torch.Tensor : Masque de séquence.
         """
-        if mask_current:
-            length += 1
-        mask = (torch.triu(torch.ones(length, length)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        mask = mask.to(self.device)
-        return mask if not mask_current else mask[:-1, 1:]
+        mask = torch.zeros(length, length)
+        for i in range(length):
+            mask[i, i+1:] = float('-inf')
+        return mask.to(self.device)
     
     def _generate_memory_mask(self, src_len, tgt_len):
         """
@@ -219,7 +223,7 @@ class Transformers(nn.Module):
         Retourne :
         - torch.Tensor : Masque de mémoire.
         """
-        mask = torch.ones(tgt_len, src_len)
+        mask = torch.zeros(tgt_len, src_len)
         for i in range(tgt_len):
             mask[i, i+1:] = float('-inf')
         return mask.to(self.device)
