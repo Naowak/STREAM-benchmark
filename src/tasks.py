@@ -188,6 +188,11 @@ def generate_chaotic_forecasting(sequence_length=1000, forecast_length=1, traini
         xs[i + 1] = xs[i] + (dx * dt)
         ys[i + 1] = ys[i] + (dy * dt)
         zs[i + 1] = zs[i] + (dz * dt)
+    
+    # Normalize the data
+    xs = (xs - np.mean(xs)) / (3*np.std(xs))
+    ys = (ys - np.mean(ys)) / (3*np.std(ys))
+    zs = (zs - np.mean(zs)) / (3*np.std(zs))
 
     # Create the input & target
     input = np.column_stack((xs[:-forecast_length], ys[:-forecast_length], zs[:-forecast_length])).reshape(1, -1, 3)
@@ -512,6 +517,9 @@ def generate_mnist_classification(n_samples=1000, training_ratio=0.8, path=None)
     X = np.concatenate([np.array(dataset['train']['image']), np.array(dataset['test']['image'])]).transpose(0, 2, 1) # so we can read it column by column
     Y = np.concatenate([np.array(dataset['train']['label']), np.array(dataset['test']['label'])])
     
+    # Normalize the data
+    X = X / 255
+
     # Shuffle and select the samples
     shuffle = np.random.permutation(X.shape[0])[:n_samples]
     X = X[shuffle]
