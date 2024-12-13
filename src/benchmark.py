@@ -257,6 +257,7 @@ class Benchmark:
             model.train(X_train, Y_train, classification=task.is_classification, prediction_timesteps=T_train)
         except Exception as e:
             self.logger.error(f"\033[91mError training model on task {task.name}: {e}\033[0m")
+            raise e
             return
         
         # Mesure du temps et de la mémoire pour l'entrainement
@@ -269,6 +270,7 @@ class Benchmark:
             predictions = model.run(X_test)
         except Exception as e:
             self.logger.error(f"\033[91mError during inference on task {task.name}: {e}\033[0m")
+            raise e
             return
         inference_time = time.time() - start_time
         
