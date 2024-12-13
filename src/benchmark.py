@@ -204,6 +204,7 @@ class Benchmark:
         
         self.logger.info(f"Report & plots generated at {output_path}")
 
+
     def _select_random_hyperparameters(self, task: Task) -> Dict[str, Any]:
         """Sélectionne aléatoirement des hyperparamètres pour un modèle.
         
