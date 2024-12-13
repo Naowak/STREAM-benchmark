@@ -77,7 +77,7 @@ class Transformers(nn.Module):
                 # Forward pass
                 emb_X = self.fc_in_encoder(X_batch)
                 emb_Y = self.fc_in_decoder(Y_batch)       
-                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc)#, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
+                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
                 output = self.fc_out(tr_output)
 
                 # Select only the prediction timesteps
@@ -134,7 +134,7 @@ class Transformers(nn.Module):
                 # Iterate over the sequence to predict the next Y step by step
                 for i in range(X_batch.shape[1]):
                     emb_Y = self.fc_in_decoder(Y_batch)
-                    tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc)#, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
+                    tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
                     Y_batch[:, i, :] = self.fc_out(tr_output[:, i, :])
                 
                 # Append the predictions
