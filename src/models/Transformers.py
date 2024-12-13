@@ -66,7 +66,7 @@ class Transformers(nn.Module):
         # Générer les masques
         mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
-        mask_seq_dec = self._generate_sequence_mask(Y.shape[1])#, mask_current=True)
+        mask_seq_dec = self._generate_sequence_mask(Y.shape[1] + 1)#, mask_current=True)
 
         # Entraîner le modèle
         self.transformer.train()
@@ -75,10 +75,11 @@ class Transformers(nn.Module):
         for _ in range(epochs):
             for i, (X_batch, Y_batch) in enumerate(dataloader):
                 # Forward pass
+                Y_padd = torch.cat([torch.zeros(Y_batch.shape[0], 1, Y_batch.shape[2]), Y_batch], dim=1)
                 emb_X = self.fc_in_encoder(X_batch)
-                emb_Y = self.fc_in_decoder(Y_batch)       
+                emb_Y = self.fc_in_decoder(Y_padd)
                 tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
-                output = self.fc_out(tr_output)
+                output = self.fc_out(tr_output[:, 1:, :])
 
                 # Select only the prediction timesteps
                 preds = []
@@ -118,7 +119,7 @@ class Transformers(nn.Module):
         # Générer les masques 
         mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
-        mask_seq_dec = self._generate_sequence_mask(X.shape[1])#, mask_current=True)
+        mask_seq_dec = self._generate_sequence_mask(X.shape[1] + 1)#, mask_current=True)
 
         # Run model
         Y_preds = []
@@ -133,9 +134,11 @@ class Transformers(nn.Module):
 
                 # Iterate over the sequence to predict the next Y step by step
                 for i in range(X_batch.shape[1]):
-                    emb_Y = self.fc_in_decoder(Y_batch)
+                    Y_padd = torch.cat([torch.zeros(Y_batch.shape[0], 1, Y_batch.shape[2]), Y_batch], dim=1)
+                    emb_Y = self.fc_in_decoder(Y_padd)
                     tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
-                    Y_batch[:, i, :] = self.fc_out(tr_output[:, i, :])
+                    output = self.fc_out(tr_output[:, 1:, :])
+                    Y_batch[:, i, :] = output[:, i, :]
                 
                 # Append the predictions
                 Y_preds.append(Y_batch)
