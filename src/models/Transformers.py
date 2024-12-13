@@ -64,7 +64,7 @@ class Transformers(nn.Module):
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         
         # Générer les masques
-        mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
+        #mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
         mask_seq_dec = self._generate_sequence_mask(Y.shape[1], mask_current=True)
 
@@ -77,7 +77,7 @@ class Transformers(nn.Module):
                 # Forward pass
                 emb_X = self.fc_in_encoder(X_batch)
                 emb_Y = self.fc_in_decoder(Y_batch)       
-                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec, memory_mask=mask_memory)
+                tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
                 output = self.fc_out(tr_output)
 
                 # Select only the prediction timesteps
