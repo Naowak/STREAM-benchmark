@@ -66,7 +66,7 @@ class Transformers(nn.Module):
         # Générer les masques
         mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
-        mask_seq_dec = self._generate_sequence_mask(Y.shape[1], mask_current=True)
+        mask_seq_dec = self._generate_sequence_mask(Y.shape[1])#, mask_current=True)
 
         # Entraîner le modèle
         self.transformer.train()
@@ -118,7 +118,7 @@ class Transformers(nn.Module):
         # Générer les masques 
         mask_memory = self._generate_memory_mask(X.shape[1], X.shape[1])
         mask_seq_enc = self._generate_sequence_mask(X.shape[1])
-        mask_seq_dec = self._generate_sequence_mask(X.shape[1], mask_current=True)
+        mask_seq_dec = self._generate_sequence_mask(X.shape[1])#, mask_current=True)
 
         # Run model
         Y_preds = []
