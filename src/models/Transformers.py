@@ -75,7 +75,8 @@ class Transformers(nn.Module):
         for _ in range(epochs):
             for i, (X_batch, Y_batch) in enumerate(dataloader):
                 # Forward pass
-                Y_padd = torch.cat([torch.zeros(Y_batch.shape[0], 1, Y_batch.shape[2]), Y_batch], dim=1)
+                t_padd = torch.zeros((Y_batch.shape[0], 1, Y_batch.shape[2]), device=self.device)
+                Y_padd = torch.cat([t_padd, Y_batch], dim=1)
                 emb_X = self.fc_in_encoder(X_batch)
                 emb_Y = self.fc_in_decoder(Y_padd)
                 tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
@@ -134,7 +135,8 @@ class Transformers(nn.Module):
 
                 # Iterate over the sequence to predict the next Y step by step
                 for i in range(X_batch.shape[1]):
-                    Y_padd = torch.cat([torch.zeros(Y_batch.shape[0], 1, Y_batch.shape[2]), Y_batch], dim=1)
+                    t_padd = torch.zeros((Y_batch.shape[0], 1, Y_batch.shape[2]), device=self.device)
+                    Y_padd = torch.cat([t_padd, Y_batch], dim=1)
                     emb_Y = self.fc_in_decoder(Y_padd)
                     tr_output = self.transformer(src=emb_X, tgt=emb_Y, src_mask=mask_seq_enc, tgt_mask=mask_seq_dec)#, memory_mask=mask_memory)
                     output = self.fc_out(tr_output[:, 1:, :])
