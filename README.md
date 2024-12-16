@@ -236,7 +236,7 @@ If you use STREAM in your research, please cite:
 ```bibtex
 @misc{stream2024,
   title={STREAM: Sequential Task Review for Evaluating Artificial Memory},
-  author={Yannis Bendi-Ouis},
+  author={Yannis Bendi-Ouis, Xavier Hinaut},
   year={2024},
   publisher={GitHub},
   howpublished={\url{https://github.com/naowak/stream-benchmark}}
