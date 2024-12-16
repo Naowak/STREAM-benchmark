@@ -120,6 +120,13 @@ The Transformer Decoder presents a streamlined variant of the full Transformer, 
 
 ## Experimental Results
 
+We conducted experiments on the STREAM benchmark using the four architectures we described above: ESN, LSTM, Transformers, and Transformer-Decoder. We didn't know the best Hyper-Parameters (HP) for each architecture on each task, so we used a random search to find the best ones. For each task and each architecture, we sampled 2000 sets of HP on 10 seeds (200 per seed) and trained a model for each set of HP. 
+
+
+We evaluated the performance of each trained models on its test set and reported its error (Mean Square Error for regression tasks, 1-Accuracy for classification tasks). Then, for each architecture and each tasks, we seperate the models in 5 categories : models having less than 1k parameters, 10k parameters, 100k parameters, 1M parameters, and more than 1M parameters. We retrieved the best model in each category, here are the results :
+
+TABLE
+
 ## Discussion
 
 ## Conclusion
