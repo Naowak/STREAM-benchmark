@@ -10,13 +10,95 @@ In addition, we evaluate the performance of four different model architectures o
 
 Since the release of Transformers [REF] in 2017, no major breakthrought has been made in the field of neural networks architectures for Sequential Tasks. Even though Transformers have been proven to be very efficient for a wide range of tasks, they are not perfect and suffers from some limitations. For instance, Transformers aren't RNNs : they do not rely on previous internal state to compute the next one, they need to look at the whole input sequence to compute the next word at each timestep, and the number of computation grows quadratically with the length of the sequence. Which is a major limitation for long sequences and long-term dependencies.
 
-For those reasons, a certain amount of researchers (like Yann LeCun [REF]) are convinced that the next step in Artificial Intelligence won't be made with current architectures like Transformers, but with new ones that might be inspired by existing architectures like LSTMs or ESNs or by our brain.
+For those reasons, a certain amount of researchers (like Yann LeCun [REF]) are convinced that the next step in Artificial Intelligence won't be made with current architectures like Transformers, but with new ones that might be inspired by existing architectures like LSTMs [REF] or ESNs [REF] or by our brain.
 
 But, such models often needs to be scaled to be efficiant on complex problems (e.g. Natural Language Processing) and to be able to generalize on a wide range of tasks. And, it is not always easy to train and evaluate those scaled models : ressources like GPUs are expensives. Further, there can be a lot of different variation from a unique model (e.g. hyperparameters, initialization, etc.) that can lead to very different results, one can not afford to train and evaluate countless of scaled models.
 
 We tried to tackle this problem by providing a set of 12 small but complex sequential tasks so one can train, evaluate and compare its new archiectures to existing ones without the need to scale them first. Each task is designed to be adjustable in difficulty and complexity, so that we can create different level of difficulty for the benchmark.
 
 ## Tasks
+
+In this section, we will present each of the tasks we implemented for the Benchmark. Those tasks have been sort in 4 categories : Simple Memory, Signal Processing, Long-Term Dependencies and Information Manipulation.
+
+### Simple Memory
+
+#### Discrete Postcasting
+
+This task tests the model's ability to maintain and reproduce discrete information after a specific delay. The input consists of one-hot encoded symbols from a finite set (n_symbols). After receiving a symbol, the model must reproduce it exactly after a fixed delay of d timesteps. This evaluates the model's capacity to maintain precise symbolic information in its memory without degradation, even in the presence of ongoing input processing.
+
+![Discrete Postcasting](./images/discrete_postcasting.png)
+
+#### Continue Postcasting
+
+Similar to discrete postcasting, but with continuous values instead of discrete symbols. The model receives real-valued inputs in the range [-0.8, 0.8] and must reproduce each value after a fixed delay. This tests the model's ability to maintain precise numerical information in memory, which is more challenging than discrete values as it requires preserving exact quantities rather than just categories.
+
+![Continue Postcasting](./images/continue_postcasting.png)
+
+### Signal Processing
+
+#### Sin Forecasting
+
+This task evaluates the model's ability to predict future values of a frequency-modulated sinusoidal signal. The input signal combines a carrier wave (frequency = 10Hz) modulated by a slower sinusoidal wave (frequency = 0.5Hz). The model must predict the signal's value in N timesteps, requiring it to understand both the fast oscillations of the carrier wave and the slower modulation pattern. This tests the model's capability to process hierarchical temporal patterns at different timescales.
+
+![Sin Forecasting](./images/sin_forecasting.png)
+
+#### Chaotic Forecasting
+
+This task uses the Lorenz system, a classic example of deterministic chaos, to test the model's ability to predict complex dynamical systems. The input consists of three normalized dimensions (x, y, z) from the Lorenz attractor, and the model must predict the system's state in N timesteps. This tests the model's capacity to learn and predict non-linear dynamics, where small prediction errors can lead to significantly different trajectories over time.
+
+![Chaotic Forecasting](./images/chaotic_forecasting.png)
+
+### Long-Term Dependencies
+
+#### Discrete Pattern Completion
+
+The model must identify and complete repetitive patterns in a sequence of discrete symbols. The sequence consists of a base pattern of length n that repeats throughout the sequence. Some symbols are masked, and the model must predict these masked values based on the pattern it has learned. A marker indicates when predictions are required. This tests the model's ability to discover and utilize regular patterns in sequences, even when they are partially obscured.
+
+![Discrete Pattern Completion](./images/discrete_pattern_completion.png)
+
+#### Continue Pattern Completion
+
+Similar to discrete pattern completion but with continuous values. The model must identify and complete repetitive patterns in a sequence of real values. Masked values are indicated by -1, and the model must predict these values based on the learned pattern. This tests pattern recognition capabilities with continuous data, which is more challenging as it requires precise numerical predictions rather than classification.
+
+![Continue Pattern Completion](./images/continue_pattern_completion.png)
+
+#### Copy Task
+
+The model must memorize a whole sequence of discrete symbols, maintain this information during a delay period, and then reproduce the entire sequence when triggered. The task tests pure memorization capacity, as the model must store the complete sequence without any compression or pattern recognition. The trigger signal tests the model's ability to maintain information in memory until it's needed.
+
+![Copy Task](./images/copy_task.png)
+
+#### Selective Copy
+
+A variation of the copy task where only specific marked elements need to be memorized and reproduced. The model receives a sequence where certain elements are marked for memorization. After a delay, when triggered, it must reproduce only the marked elements in their original order. This tests the model's ability to selectively attend to and store specific information while ignoring irrelevant inputs.
+
+![Selective Copy](./images/selective_copy.png)
+
+### Information Manipulation
+
+#### Adding Problem
+
+The model must process a sequence of random numbers, with certain positions marked. When triggered, it must sum the numbers at the marked positions. This tests the model's ability to not just store information but also perform arithmetic operations on stored values. It combines selective attention (identifying marked positions), memory (storing the values), and computation (adding the values).
+
+![Adding Problem](./images/adding_problem.png)
+
+#### Sorting Problem
+
+Each input combines a symbol with a position indicator. The model must memorize these symbol-position pairs and, when triggered, output the symbols in the correct order according to their associated positions. This tests the model's ability to maintain associations between different types of information (symbols and positions) and perform complex reordering operations on stored information.
+
+![Sorting Problem](./images/sorting_problem.png)
+
+#### MNIST Classification
+
+A sequential version of the MNIST digit classification task. The model receives normalized pixel values column by column, must build and maintain an internal representation of the complete image, and then classify the digit when triggered. This tests the model's ability to construct and maintain complex spatial representations from sequential input and use this information for classification.
+
+![MNIST Classification](./images/mnist_classification.png)
+
+#### Bracket Matching
+
+The model must validate sequences of nested parentheses. Each sequence can have multiple levels of nesting (up to max_depth), and the model must determine whether the sequence is valid (i.e., all brackets are properly closed in the correct order). This tests the model's ability to maintain hierarchical context information and track nested dependencies, which is crucial for tasks like parsing formal languages or understanding hierarchical structures in natural language.
+
+![Bracket Matching](./images/bracket_matching.png)
 
 ## Evaluated Models : Baseline
 
