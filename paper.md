@@ -102,6 +102,22 @@ The model must validate sequences of nested parentheses. Each sequence can have 
 
 ## Evaluated Models : Baseline
 
+### ESN
+
+The Echo State Network (ESN) represents a fascinating approach to temporal processing, implementing the Reservoir Computing methodology. At its heart lies the reservoir, a recurrent neural network featuring fixed, randomly initialized weights. The reservoir's behavior is governed by two crucial parameters: the spectral radius, which maintains the stability of the reservoir's weight matrix while determining its temporal memory capacity, and the leak rate, which controls how quickly the network "forgets" previous information. The reservoir's dimension, specified by n_units, determines the network's capacity to represent complex temporal patterns. The readout - a simple linear layer implementing Ridge regression - maps the rich dynamics of the reservoir states to desired outputs. This combination of a dynamic reservoir and a simple readout mechanism makes the ESN particularly efficient for capturing complex temporal dependencies.
+
+### LSTM
+
+The Long Short-Term Memory (LSTM) network implements a deep sequential processing approach. The architecture begins with an input projection layer that adapts the input to the LSTM's hidden dimension, automatically inferring the appropriate dimensionality during training. The core of the network consists of multiple stacked LSTM layers, with the number of layers controlled by the num_layers parameter. Each LSTM layer maintains its own set of weight matrices and states, consisting of both a hidden state and a cell state. This hierarchical structure enables the network to learn increasingly abstract temporal features at each level. The final layer projects the LSTM's hidden state to the output dimension, again with automatic dimension adaptation. This architecture excels at capturing long-term dependencies in sequential data, thanks to its sophisticated gating mechanisms and deep structure.
+
+### Transformers
+
+The full Transformer architecture represents a significant departure from traditional sequential processing, implementing a parallel processing approach through attention mechanisms. The encoder component comprises multiple layers, each featuring a self-attention mechanism that models relationships between sequence elements, complemented by position-wise feed-forward networks. The decoder similarly consists of multiple layers, but with an additional cross-attention mechanism that enables it to relate the output sequence to the input sequence. Both encoder and decoder feature dedicated input processing layers that project their inputs to the model's working dimension (d_model). The output processing occurs through a final linear projection layer. This architecture's strength lies in its ability to process entire sequences in parallel while maintaining unlimited theoretical access to any part of the input sequence.
+
+### Transformer Decoder
+
+The Transformer Decoder presents a streamlined variant of the full Transformer, optimized for sequence prediction tasks. It maintains the core strengths of the Transformer architecture while reducing computational overhead. The architecture begins with a single input projection layer that maps inputs to the model's working dimension. This is followed by a stack of decoder layers, each implementing self-attention mechanisms and feed-forward networks. The final output layer projects the decoder states to the desired output dimension. This architecture proves particularly effective for tasks where the full encoder-decoder structure might be unnecessary.
+
 ## Experimental Results
 
 ## Discussion
