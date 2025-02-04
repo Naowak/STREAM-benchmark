@@ -254,7 +254,7 @@ class Benchmark:
         # Entraînement
         try:
             model = self.model_class(**model_hp)
-            model.train(X_train, Y_train, classification=task.is_classification, prediction_timesteps=T_train)
+            model.train(X_train, Y_train, classification=task.is_classification, prediction_timesteps=T_train, **(task.training_args or {}))
         except Exception as e:
             self.logger.error(f"\033[91mError training model on task {task.name}: {e}\033[0m")
             raise e

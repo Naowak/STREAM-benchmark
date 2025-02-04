@@ -3,6 +3,7 @@ from src.models.ESN import ESN
 from src.models.LSTM import LSTM
 from src.models.Transformers import Transformers
 from src.models.TransformerDecoderOnly import TransformerDecoderOnly
+from src.models.EchoStateTransformer import EchoStateTransformer
 from src.evaluation import evaluation
 import argparse
 
@@ -54,6 +55,20 @@ MODELS = {
             "dim_feedforward": (64, 128, 256),
             "dropout": 0.1,
             "learning_rate": 1e-3
+        },
+        'training_args': {
+            "epochs": 10, 
+            "batch_size": 10
+        },
+    },
+    'EchoStateTransformer': {
+        'model': EchoStateTransformer,
+        'args': {
+            "memory_units": 4,
+            "memory_dim": 50,
+            "attention_dim": 3,
+            "learning_rate": 1e-3,
+            "weight_decay": 1e-5,
         },
         'training_args': {
             "epochs": 10, 
