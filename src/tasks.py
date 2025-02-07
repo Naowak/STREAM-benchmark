@@ -615,8 +615,8 @@ def generate_bracket_matching(n_samples=1000, sequence_length=100, max_depth=5, 
 
         # Create the input & target
         input = sequence_onehot
-        target = np.zeros((sequence_length+2, 1))
-        target[-1, 0] = int(validity)
+        target = np.zeros((sequence_length+2, 2))
+        target[-1, int(validity)] = 1
 
         # Create the timesteps
         timesteps = np.arange(sequence_length+1, sequence_length+2)
