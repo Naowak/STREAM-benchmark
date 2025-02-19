@@ -38,6 +38,8 @@ def compute_score(Y, Y_hat, prediction_timesteps, classification):
 
     else:
         # Compute the MSE
+        preds = np.stack(preds, axis=0).reshape(-1, Y.shape[-1])  # [B * prediction_timesteps, O] float: logits
+        truths = np.stack(truths, axis=0).reshape(-1, Y.shape[-1])
         score = np.mean((preds - truths) ** 2)
 
     return score
