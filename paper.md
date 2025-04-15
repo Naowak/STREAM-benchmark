@@ -1,16 +1,16 @@
 # Sequential Tasks Review to Evaluate Artificial Memory 
 
-The ability to maintain and manipulate information over time is a key aspect of Artificial Intelligence. Sequential models, such as Recurrent Neural Networks (RNNs) and Transformers [REF], have been widely used for tasks requiring working memory, such as natural language processing and time series prediction. However, evaluating the capacity of these models to maintain and manipulate information over long periods remains a challenge. Existing methods often focus on one or two specific tasks (e.g. SequentialMNIST [REF], copy task [REF], etc.), which may not be representative of the model's generalization capabilities.
+The ability to maintain and manipulate information over time is a key aspect of Artificial Intelligence. Sequential models, such as Recurrent Neural Networks (RNNs) and Transformer [REF], have been widely used for tasks requiring working memory, such as natural language processing and time series prediction. However, evaluating the capacity of these models to maintain and manipulate information over long periods remains a challenge. Existing methods often focus on one or two specific tasks (e.g. SequentialMNIST [REF], copy task [REF], etc.), which may not be representative of the model's generalization capabilities.
 
 In this paper, we propose a new benchmark called STREAM (Sequential Tasks Review to Evaluate Artificial Memory) that aims to address this limitation by providing a diverse set of 12 tasks that test different aspects of working memory. By providing a standardized framework for evaluation, STREAM allows researchers to easily compare the performance of different model architectures.
 
-In addition, we evaluate the performance of four different model architectures on the STREAM benchmark to serve as a baseline: Long Short-Term Memory (LSTM) [REF], Transformers [REF], Transformer-Decoder [REF], and Echo State Networks (ESN) [REF]. We compare the models' performance on each task and analyze their strengths and weaknesses.
+In addition, we evaluate the performance of three different model architectures on the STREAM benchmark to serve as a baseline: Long Short-Term Memory (LSTM) [REF], Gated Recurrent Unit (GRU) [REF] and Transformer-Decoder [REF]. We compare the models' performance on each task and analyze their strengths and weaknesses.
 
 ## Introduction
 
-Since the release of Transformers [REF] in 2017, no major breakthrought has been made in the field of neural networks architectures for Sequential Tasks. Even though Transformers have been proven to be very efficient for a wide range of tasks, they are not perfect and suffers from some limitations. For instance, Transformers aren't RNNs : they do not rely on previous internal state to compute the next one, they need to look at the whole input sequence to compute the next word at each timestep, and the number of computation grows quadratically with the length of the sequence. Which is a major limitation for long sequences and long-term dependencies.
+Since the release of Transformer [REF] in 2017, no major breakthrought has been made in the field of neural networks architectures for Sequential Tasks. Even though Transformer have been proven to be very efficient for a wide range of tasks, they are not perfect and suffers from some limitations. For instance, Transformer aren't RNNs : they do not rely on previous internal state to compute the next one, they need to look at the whole input sequence to compute the next word at each timestep, and the number of computation grows quadratically with the length of the sequence. Which is a major limitation for long sequences and long-term dependencies.
 
-For those reasons, we believe that the next step in Artificial Intelligence won't be made with current architectures like Transformers, but with new ones that might be inspired by existing architectures like LSTMs [REF] or ESNs [REF] or by our brain.
+For those reasons, we believe that the next step in Artificial Intelligence won't be made with current architectures like Transformer, but with new ones that might be inspired by existing architectures like LSTMs [REF], GRU [REF] or by our brain.
 
 But, such models often needs to be scaled to be efficiant on complex problems (e.g. Natural Language Processing) and to be able to generalize on a wide range of tasks. And, it is not always easy to train and evaluate those scaled models : ressources like GPUs are expensives. Except from big private compagnies, only a fiew of research labs can afford to train and evaluate those models on a large scale (e.g. on text). 
 
@@ -106,17 +106,13 @@ The model must validate sequences of nested parentheses. Each sequence can have 
 
 ## Evaluated Models : Baseline
 
-### ESN
-
-The Echo State Network (ESN) [REF] represents a fascinating approach to temporal processing, implementing the Reservoir Computing methodology. At its heart lies the reservoir, a recurrent neural network featuring fixed, randomly initialized weights. The reservoir's behavior is governed by two crucial parameters: the spectral radius, which maintains the stability of the reservoir's weight matrix while determining its temporal memory capacity, and the leak rate, which controls how quickly the network "forgets" previous information. The reservoir's dimension, specified by n_units, determines the network's capacity to represent complex temporal patterns. The readout - a simple linear layer implementing Ridge regression - maps the rich dynamics of the reservoir states to desired outputs. This combination of a dynamic reservoir and a simple readout mechanism makes the ESN particularly efficient for capturing complex temporal dependencies.
-
 ### LSTM
 
 The Long Short-Term Memory (LSTM) [REF] network implements a deep sequential processing approach. The architecture begins with an input projection layer that adapts the input to the LSTM's hidden dimension, automatically inferring the appropriate dimensionality during training. The core of the network consists of multiple stacked LSTM layers, with the number of layers controlled by the num_layers parameter. Each LSTM layer maintains its own set of weight matrices and states, consisting of both a hidden state and a cell state. This hierarchical structure enables the network to learn increasingly abstract temporal features at each level. The final layer projects the LSTM's hidden state to the output dimension, again with automatic dimension adaptation. This architecture excels at capturing long-term dependencies in sequential data, thanks to its sophisticated gating mechanisms and deep structure.
 
-### Transformers
+### GRU
 
-The full Transformer [REF] architecture represents a significant departure from traditional sequential processing, implementing a parallel processing approach through attention mechanisms. The encoder component comprises multiple layers, each featuring a self-attention mechanism that models relationships between sequence elements, complemented by position-wise feed-forward networks. The decoder similarly consists of multiple layers, but with an additional cross-attention mechanism that enables it to relate the output sequence to the input sequence. Both encoder and decoder feature dedicated input processing layers that project their inputs to the model's working dimension (d_model). The output processing occurs through a final linear projection layer. This architecture's strength lies in its ability to process entire sequences in parallel while maintaining unlimited theoretical access to any part of the input sequence.
+The Gated Recurrent Unit (GRU) [REF] offers a simplified alternative to the LSTM architecture. By combining the forget and input gates into a single update gate, the GRU reduces complexity while effectively capturing temporal dependencies. This streamlined structure allows for faster training and fewer parameters, making it well-suited for tasks with limited computational resources while still maintaining robust performance on a range of sequential tasks.
 
 ### Transformer Decoder
 
@@ -124,11 +120,11 @@ The Transformer Decoder [REF] presents a streamlined variant of the full Transfo
 
 ## Experimental Results
 
-We conducted experiments on the STREAM benchmark using the four architectures we described above: ESN, LSTM, Transformers, and Transformer-Decoder. Each tasks difficulty can be adjust by changing the number of symbols, the length of the sequences, the delay, etc. All thoses task parameters have been selected so that the benchmark can be runned on a cluster of 8xA100 GPUs in less than 20 hours by architecture. Those task parameters are described in the annexes [ANNEXE].
+We conducted experiments on the STREAM benchmark using the three architectures we described above: LSTM, GRU, and Transformer-Decoder. Each tasks difficulty can be adjust by changing the number of symbols, the length of the sequences, the delay, etc. We would like to provide 3 different variation of difficulty (*small*, *medium* and *large*) and conduct the experiment on both. For now on, only the *small* set of task-parameters has been evaluated. Those task parameters are described in the annexes [ANNEXE].
 
-We didn't know the best Hyper-Parameters (HP) for each architecture on each task, so we used a random search to find the best ones. For each task and each architecture, we sampled 2000 sets of HP on 10 seeds (200 per seed) and trained a model for each set of HP. The HP space search for each architecture is described in the annexes [ANNEXE]. 
+Since we want to evaluate how each architecture is able to scale, we tested all architecture for different size of parameters : 1k, 10k, 100k and 1M trainable parameters. For the LSTM and GRU, only one Hyper-Parameter (e.g. the *hidden size*) can influence the size of the model, so we selected it to match the targeted size. In contrast, for the Transformer-Decoder architecture, several HP (e.g. *d_model*, *dim_feedforward*) can have an impact on the size of the model, or lead to different architecture (e.g. *nhead*). Since we do not know in advance which set of HP is the best for each tasks, we arbitraly selected 4 different set of HP for each targeted size, all following the same schema. Those model's HP are described in the annexes [ANNEXE].
 
-We evaluated the performance of each trained models on its test set and reported its error (Mean Square Error for regression tasks and 1-Accuracy for classification tasks). Then, for each architecture and each tasks, we seperate the models in 5 categories : models having less than 1k parameters, 10k parameters, 100k parameters, 1M parameters, and more than 1M parameters. We retrieved the best model in each category, here are the results :
+We conducted the experiment on 5 different seeds, and select the best one for each combinaison of task / architecture / size. The evaluation consisted of reporting the error of each trained models on its test set : *Mean Square Error* for regression tasks and *1-Accuracy* for classification tasks (lower is better).
 
 TABLE
 
@@ -138,16 +134,16 @@ SOME PLOTS + DISCUSSION
 
 ## Conclusion
 
-We propose STREAM, a new benchmark that aims to evaluate the capacity of sequential models to maintain and manipulate information over time. The benchmark consists of 12 diverse tasks that test different aspects of working memory, including simple memory, signal processing, long-term dependencies, and information manipulation. We evaluated four different model architectures on the STREAM benchmark: ESN, LSTM, Transformers, and Transformer-Decoder. Our results show that each architecture has its strengths and weaknesses across different tasks, highlighting the importance of task-specific evaluation for sequential models. We hope that the STREAM benchmark will serve as a valuable resource for researchers working on sequential tasks and help drive progress in the field of artificial memory.
+We propose STREAM, a new benchmark that aims to evaluate the capacity of sequential models to maintain and manipulate information over time. The benchmark consists of 12 diverse tasks that test different aspects of working memory, including simple memory, signal processing, long-term dependencies, and information manipulation. We evaluated three different model architectures on the STREAM benchmark: LSTM, GRU and Transformer-Decoder. Our results show that each architecture has its strengths and weaknesses across different tasks, highlighting the importance of task-specific evaluation for sequential models. We hope that the STREAM benchmark will serve as a valuable resource for researchers working on sequential tasks and help drive progress in the field of artificial memory.
 
 ## Annexes
 
 Plots of the results : comparison of performance of each architecture on each task, comparison of performance of each architecture on each category of number of parameters.
 
 ## References
-Transformers
 LSTM
-ESN
+GRU
+Transformer
 https://www.youtube.com/watch?v=5t1vTLU7s40
 
 ## Acknowledgements
